@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: menstrualcyclebot
+
+telegram:
+  bot:
+    token: "7230814675:AAFiWury_3KdD6oRQCsr3h5VErNMEK-xjB4"
+    username: "menstrc_bot"
