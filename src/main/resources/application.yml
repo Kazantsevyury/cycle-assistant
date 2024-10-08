@@ -2,7 +2,16 @@ spring:
   application:
     name: menstrualcyclebot
 
-telegram:
-  bot:
-    token: "7230814675:AAFiWury_3KdD6oRQCsr3h5VErNMEK-xjB4"
-    username: "menstrc_bot"
+  config:
+    import: "application-secrets.yml"  # Импортируем файл с секретами
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/menstrualcyclebotdb
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true
