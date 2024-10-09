@@ -1,7 +1,8 @@
 package com.example.menstrualcyclebot.config;
 
 import com.example.menstrualcyclebot.presentation.MenstrualCycleBot;
-import com.example.menstrualcyclebot.service.CycleService;
+import com.example.menstrualcyclebot.repository.CycleRepository;
+import com.example.menstrualcyclebot.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,9 +31,10 @@ public class BotConfig {
     }
 
     @Bean
-    public MenstrualCycleBot menstrualCycleBot(CycleService cycleService,
-                                               @Value("${telegram.bot.token}") String botToken,
-                                               @Value("${telegram.bot.username}") String botUsername) {
-        return new MenstrualCycleBot(cycleService, botToken, botUsername);
+    public MenstrualCycleBot menstrualCycleBot(
+            @Value("${telegram.bot.token}") String botToken,
+            @Value("${telegram.bot.username}") String botUsername,
+            UserRepository userRepository, CycleRepository cycleRepository) {
+        return new MenstrualCycleBot( botToken, botUsername,userRepository, cycleRepository);
     }
 }

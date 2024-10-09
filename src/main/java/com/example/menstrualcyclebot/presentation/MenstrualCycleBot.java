@@ -1,114 +1,167 @@
 package com.example.menstrualcyclebot.presentation;
 
-import com.example.menstrualcyclebot.service.CycleService;
-import com.example.menstrualcyclebot.utils.UIUtils;
+import com.example.menstrualcyclebot.domain.MenstrualCycle;
+import com.example.menstrualcyclebot.domain.User;
+import com.example.menstrualcyclebot.repository.CycleRepository;
+import com.example.menstrualcyclebot.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.telegram.telegrambots.bots.DefaultBotOptions;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
-
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.*;
+
+import static com.example.menstrualcyclebot.utils.UIUtils.createMenuKeyboard;
+import static com.example.menstrualcyclebot.utils.UIUtils.welcomeKeyboard;
 
 
 @Slf4j
 @Component
 public class MenstrualCycleBot extends TelegramLongPollingBot {
 
-    private final CycleService cycleService;
     private final String botToken;
     private final String botUsername;
+    private final UserRepository userRepository;
+    private final CycleRepository cycleRepository;
+    private final Map<Long, MenstrualCycle> dataEntrySessions = new HashMap<>();
 
-    public MenstrualCycleBot(CycleService cycleService, String botToken, String botUsername) {
-        this.cycleService = cycleService;
+    @Autowired
+    public MenstrualCycleBot(String botToken, String botUsername, UserRepository userRepository, CycleRepository cycleRepository) {
+        super(new DefaultBotOptions(), botToken);
         this.botToken = botToken;
         this.botUsername = botUsername;
+        this.userRepository = userRepository;
+        this.cycleRepository = cycleRepository;
     }
-
-
     @Override
     public void onUpdateReceived(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
-            String chatId = update.getMessage().getChatId().toString();
-            String receivedMessage = update.getMessage().getText();
+            String messageText = update.getMessage().getText();
+            long chatId = update.getMessage().getChatId();
 
-            switch (receivedMessage) {
+            switch (messageText) {
                 case "/start":
-                    sendWelcomeMessage(chatId);
+                    // Показать стартовое меню
+                    sendMessageWithKeyboard(chatId, "Добро пожаловать! Выберите опцию ниже:", welcomeKeyboard());
                     break;
-                case "Начать отслеживание":
-                    sendTrackingMessage(chatId);
+                case "ℹ️ info":
+                    handleInfo(chatId);
                     break;
-                case "Статистика":
-                    sendStatistics(chatId);
+                case "✍️ Ввести данные":
+                    handleDataEntry(chatId);
                     break;
-                case "Помощь":
-                    sendHelpMessage(chatId);
+                case "💡 Получить рекомендацию":
+                    handleRecommendation(chatId);
                     break;
-                case "Получить совет на день":
-                    sendDailyAdvice(chatId);
+                case "📊 Статистика":
+                    handleStatistics(chatId);
                     break;
-                case "Текущий день цикла":
-                    sendCurrentCycleDay(chatId);
+                case "📅 Текущий день цикла":
+                    handleCurrentDay(chatId);
                     break;
-                case "Настройка профиля":
-                    sendProfileSettings(chatId);
+                case "👤 Настройка профиля":
+                    handleProfileSettings(chatId);
                     break;
-                case "Настроить уведомления":
-                    sendNotificationSettings(chatId);
+                case "🔔 Настроить уведомления":
+                    handleNotificationSettings(chatId);
                     break;
-                case "Календарь":
-                    sendCalendar(chatId);
+                case "📆 Календарь":
+                    handleCalendar(chatId);
                     break;
-                case "Новый цикл":
-                    startNewCycle(chatId);
+                case "🔄 Новый цикл":
+                    handleNewCycle(chatId);
                     break;
                 default:
-                    sendTextMessage(chatId, "Неизвестная команда. Пожалуйста, используйте кнопки меню.");
+                    sendMessage(chatId, "Неизвестная команда. Попробуйте снова.");
             }
         }
     }
 
-    private void sendWelcomeMessage(String chatId) {
-        SendMessage message = new SendMessage();
-        message.setChatId(chatId);
-        message.setText("Привет! Я бот для отслеживания менструального цикла. Используйте кнопки ниже для взаимодействия:");
-        message.setReplyMarkup(UIUtils.createMenuKeyboard());
-        try {
-            execute(message);
-        } catch (TelegramApiException e) {
-            log.error("Ошибка при отправке сообщения: {}", e.getMessage());
-        }
+    // Заглушки функций
+    private void handleInfo(long chatId) {
+        sendMessage(chatId, "Функционал разрабатывается: Информация о боте.");
+        // Возврат к стартовому меню
+        sendMessageWithKeyboard(chatId, "Выберите опцию ниже:", welcomeKeyboard());
     }
 
-    private void sendTrackingMessage(String chatId) {
-        SendMessage message = new SendMessage();
-        message.setChatId(chatId);
-        message.setText("Пожалуйста, введите данные в формате: ГГГГ-ММ-ДД <длительность цикла> <длительность менструации>");
-        try {
-            execute(message);
-        } catch (TelegramApiException e) {
-            log.error("Ошибка при отправке сообщения: {}", e.getMessage());
-        }
+    private void handleDataEntry(long chatId) {
+        sendMessage(chatId, "Функционал разрабатывается: Ввод данных.");
+        // Переход на главное меню
+        sendMessageWithKeyboard(chatId, "Выберите опцию в основном меню:", createMenuKeyboard());
     }
 
-    private void sendStatistics(String chatId) {
-        // Здесь можно добавить логику для отправки статистики
-        sendTextMessage(chatId, "Вот ваша статистика... (в разработке)");
+    private void handleRecommendation(long chatId) {
+        sendMessage(chatId, "Функционал разрабатывается: Получение рекомендации.");
+        // Переход на главное меню
+        sendMessageWithKeyboard(chatId, "Выберите опцию в основном меню:", createMenuKeyboard());
     }
 
-    private void sendHelpMessage(String chatId) {
-        sendTextMessage(chatId, "Я помогу вам отслеживать менструальный цикл. Нажмите 'Начать отслеживание' для ввода данных или 'Статистика' для просмотра статистики.");
+    private void handleStatistics(long chatId) {
+        sendMessage(chatId, "Функционал разрабатывается: Показать статистику.");
+        // Переход на главное меню
+        sendMessageWithKeyboard(chatId, "Выберите опцию в основном меню:", createMenuKeyboard());
     }
 
-    private void sendTextMessage(String chatId, String text) {
+    private void handleCurrentDay(long chatId) {
+        sendMessage(chatId, "Функционал разрабатывается: Показать текущий день цикла.");
+        // Переход на главное меню
+        sendMessageWithKeyboard(chatId, "Выберите опцию в основном меню:", createMenuKeyboard());
+    }
+
+    private void handleProfileSettings(long chatId) {
+        sendMessage(chatId, "Функционал разрабатывается: Настройка профиля.");
+        // Переход на главное меню
+        sendMessageWithKeyboard(chatId, "Выберите опцию в основном меню:", createMenuKeyboard());
+    }
+
+    private void handleNotificationSettings(long chatId) {
+        sendMessage(chatId, "Функционал разрабатывается: Настройка уведомлений.");
+        // Переход на главное меню
+        sendMessageWithKeyboard(chatId, "Выберите опцию в основном меню:", createMenuKeyboard());
+    }
+
+    private void handleCalendar(long chatId) {
+        sendMessage(chatId, "Функционал разрабатывается: Открыть календарь.");
+        // Переход на главное меню
+        sendMessageWithKeyboard(chatId, "Выберите опцию в основном меню:", createMenuKeyboard());
+    }
+
+    private void handleNewCycle(long chatId) {
+        sendMessage(chatId, "Функционал разрабатывается: Начать новый цикл.");
+        // Переход на главное меню
+        sendMessageWithKeyboard(chatId, "Выберите опцию в основном меню:", createMenuKeyboard());
+    }
+
+    // Метод для отправки сообщений
+    private void sendMessage(long chatId, String text) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
         message.setText(text);
         try {
             execute(message);
         } catch (TelegramApiException e) {
-            log.error("Ошибка при отправке сообщения: {}", e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    // Метод для отправки сообщения с клавиатурой
+    private void sendMessageWithKeyboard(long chatId, String text, ReplyKeyboardMarkup keyboardMarkup) {
+        SendMessage message = new SendMessage();
+        message.setChatId(chatId);
+        message.setText(text);
+        message.setReplyMarkup(keyboardMarkup);
+        try {
+            execute(message);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
         }
     }
 
@@ -120,78 +173,5 @@ public class MenstrualCycleBot extends TelegramLongPollingBot {
     @Override
     public String getBotToken() {
         return botToken;
-    }
-
-
-    // Отправляет ежедневный совет пользователю
-    private void sendDailyAdvice(String chatId) {
-        SendMessage message = new SendMessage();
-        message.setChatId(chatId);
-        message.setText("Вот ваш совет на день: ...");
-        try {
-            execute(message);
-        } catch (TelegramApiException e) {
-            log.error("Ошибка при отправке сообщения: {}", e.getMessage());
-        }
-    }
-
-    // Отправляет информацию о текущем дне цикла
-    private void sendCurrentCycleDay(String chatId) {
-        SendMessage message = new SendMessage();
-        message.setChatId(chatId);
-        message.setText("Сегодня N-й день вашего цикла.");
-        try {
-            execute(message);
-        } catch (TelegramApiException e) {
-            log.error("Ошибка при отправке сообщения: {}", e.getMessage());
-        }
-    }
-
-    // Отправляет настройки профиля пользователю
-    private void sendProfileSettings(String chatId) {
-        SendMessage message = new SendMessage();
-        message.setChatId(chatId);
-        message.setText("Настройки профиля: ...");
-        try {
-            execute(message);
-        } catch (TelegramApiException e) {
-            log.error("Ошибка при отправке сообщения: {}", e.getMessage());
-        }
-    }
-
-    // Отправляет настройки уведомлений пользователю
-    private void sendNotificationSettings(String chatId) {
-        SendMessage message = new SendMessage();
-        message.setChatId(chatId);
-        message.setText("Настройки уведомлений: ...");
-        try {
-            execute(message);
-        } catch (TelegramApiException e) {
-            log.error("Ошибка при отправке сообщения: {}", e.getMessage());
-        }
-    }
-
-    // Отправляет календарь пользователю
-    private void sendCalendar(String chatId) {
-        SendMessage message = new SendMessage();
-        message.setChatId(chatId);
-        message.setText("Ваш календарь: ...");
-        try {
-            execute(message);
-        } catch (TelegramApiException e) {
-            log.error("Ошибка при отправке сообщения: {}", e.getMessage());
-        }
-    }
-
-    // Начинает новый цикл для пользователя
-    private void startNewCycle(String chatId) {
-        SendMessage message = new SendMessage();
-        message.setChatId(chatId);
-        message.setText("Новый цикл начат.");
-        try {
-            execute(message);
-        } catch (TelegramApiException e) {
-            log.error("Ошибка при отправке сообщения: {}", e.getMessage());
-        }
     }
 }

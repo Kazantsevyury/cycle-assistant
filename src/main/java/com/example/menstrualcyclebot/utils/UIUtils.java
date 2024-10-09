@@ -9,6 +9,26 @@ import java.util.List;
 
 public class UIUtils {
 
+    public static ReplyKeyboardMarkup welcomeKeyboard() {
+        ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
+        keyboardMarkup.setResizeKeyboard(true);
+        keyboardMarkup.setOneTimeKeyboard(false);
+
+        List<KeyboardRow> keyboard = new ArrayList<>();
+
+        // Первая строка с кнопками "info" и "ввести данные"
+        KeyboardRow row1 = new KeyboardRow();
+        row1.add(new KeyboardButton("ℹ️ info"));
+        row1.add(new KeyboardButton("✍️ Ввести данные"));
+
+        // Добавляем строку на клавиатуру
+        keyboard.add(row1);
+
+        // Устанавливаем клавиатуру
+        keyboardMarkup.setKeyboard(keyboard);
+        return keyboardMarkup;
+    }
+
     public static ReplyKeyboardMarkup createMenuKeyboard() {
         ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
         keyboardMarkup.setResizeKeyboard(true);
@@ -17,18 +37,17 @@ public class UIUtils {
         List<KeyboardRow> keyboard = new ArrayList<>();
 
         KeyboardRow row1 = new KeyboardRow();
-        row1.add(new KeyboardButton("Получить совет на день"));
-        row1.add(new KeyboardButton("Статистика"));
-        row1.add(new KeyboardButton("Текущий день цикла"));
-
+        row1.add(new KeyboardButton("💡 Получить рекомендацию"));
+        row1.add(new KeyboardButton("📊 Статистика"));
+        row1.add(new KeyboardButton("📅 Текущий день цикла"));
 
         KeyboardRow row2 = new KeyboardRow();
-        row2.add(new KeyboardButton("Настройка профиля"));
-        row2.add(new KeyboardButton("Настроить уведомления"));
-        row2.add(new KeyboardButton("Календарь"));
+        row2.add(new KeyboardButton("👤 Настройка профиля"));
+        row2.add(new KeyboardButton("🔔 Настроить уведомления"));
+        row2.add(new KeyboardButton("📆 Календарь"));
 
         KeyboardRow row3 = new KeyboardRow();
-        row3.add(new KeyboardButton("Новый цикл"));
+        row3.add(new KeyboardButton("🔄 Новый цикл"));
 
 
         keyboard.add(row1);
