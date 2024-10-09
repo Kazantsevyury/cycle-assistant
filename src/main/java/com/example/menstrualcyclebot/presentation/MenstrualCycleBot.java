@@ -1,6 +1,5 @@
 package com.example.menstrualcyclebot.presentation;
 
-import com.example.menstrualcyclebot.domain.CycleInfo;
 import com.example.menstrualcyclebot.service.CycleService;
 import com.example.menstrualcyclebot.utils.UIUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -8,14 +7,9 @@ import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
+
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
 
 @Slf4j
 @Component
@@ -30,6 +24,7 @@ public class MenstrualCycleBot extends TelegramLongPollingBot {
         this.botToken = botToken;
         this.botUsername = botUsername;
     }
+
 
     @Override
     public void onUpdateReceived(Update update) {
@@ -49,6 +44,24 @@ public class MenstrualCycleBot extends TelegramLongPollingBot {
                     break;
                 case "Помощь":
                     sendHelpMessage(chatId);
+                    break;
+                case "Получить совет на день":
+                    sendDailyAdvice(chatId);
+                    break;
+                case "Текущий день цикла":
+                    sendCurrentCycleDay(chatId);
+                    break;
+                case "Настройка профиля":
+                    sendProfileSettings(chatId);
+                    break;
+                case "Настроить уведомления":
+                    sendNotificationSettings(chatId);
+                    break;
+                case "Календарь":
+                    sendCalendar(chatId);
+                    break;
+                case "Новый цикл":
+                    startNewCycle(chatId);
                     break;
                 default:
                     sendTextMessage(chatId, "Неизвестная команда. Пожалуйста, используйте кнопки меню.");
@@ -98,38 +111,87 @@ public class MenstrualCycleBot extends TelegramLongPollingBot {
             log.error("Ошибка при отправке сообщения: {}", e.getMessage());
         }
     }
-/*
-    private ReplyKeyboardMarkup createMenuKeyboard() {
-        ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
-        List<KeyboardRow> keyboard = new ArrayList<>();
 
-        // Первая строка клавиатуры
-        KeyboardRow row1 = new KeyboardRow();
-        row1.add(new KeyboardButton("Начать отслеживание"));
-        row1.add(new KeyboardButton("Статистика"));
-
-        // Вторая строка клавиатуры
-        KeyboardRow row2 = new KeyboardRow();
-        row2.add(new KeyboardButton("Помощь"));
-
-        // Добавление строк на клавиатуру
-        keyboard.add(row1);
-        keyboard.add(row2);
-
-        keyboardMarkup.setKeyboard(keyboard);
-        keyboardMarkup.setResizeKeyboard(true); // Автоматически подгоняет размер кнопок под экран пользователя
-        keyboardMarkup.setOneTimeKeyboard(false); // Меню будет оставаться после использования
-
-        return keyboardMarkup;
-    }
-*/
     @Override
     public String getBotUsername() {
-        return botUsername;  // Возвращаем имя бота
+        return botUsername;
     }
 
     @Override
     public String getBotToken() {
-        return botToken;  // Возвращаем токен бота
+        return botToken;
+    }
+
+
+    // Отправляет ежедневный совет пользователю
+    private void sendDailyAdvice(String chatId) {
+        SendMessage message = new SendMessage();
+        message.setChatId(chatId);
+        message.setText("Вот ваш совет на день: ...");
+        try {
+            execute(message);
+        } catch (TelegramApiException e) {
+            log.error("Ошибка при отправке сообщения: {}", e.getMessage());
+        }
+    }
+
+    // Отправляет информацию о текущем дне цикла
+    private void sendCurrentCycleDay(String chatId) {
+        SendMessage message = new SendMessage();
+        message.setChatId(chatId);
+        message.setText("Сегодня N-й день вашего цикла.");
+        try {
+            execute(message);
+        } catch (TelegramApiException e) {
+            log.error("Ошибка при отправке сообщения: {}", e.getMessage());
+        }
+    }
+
+    // Отправляет настройки профиля пользователю
+    private void sendProfileSettings(String chatId) {
+        SendMessage message = new SendMessage();
+        message.setChatId(chatId);
+        message.setText("Настройки профиля: ...");
+        try {
+            execute(message);
+        } catch (TelegramApiException e) {
+            log.error("Ошибка при отправке сообщения: {}", e.getMessage());
+        }
+    }
+
+    // Отправляет настройки уведомлений пользователю
+    private void sendNotificationSettings(String chatId) {
+        SendMessage message = new SendMessage();
+        message.setChatId(chatId);
+        message.setText("Настройки уведомлений: ...");
+        try {
+            execute(message);
+        } catch (TelegramApiException e) {
+            log.error("Ошибка при отправке сообщения: {}", e.getMessage());
+        }
+    }
+
+    // Отправляет календарь пользователю
+    private void sendCalendar(String chatId) {
+        SendMessage message = new SendMessage();
+        message.setChatId(chatId);
+        message.setText("Ваш календарь: ...");
+        try {
+            execute(message);
+        } catch (TelegramApiException e) {
+            log.error("Ошибка при отправке сообщения: {}", e.getMessage());
+        }
+    }
+
+    // Начинает новый цикл для пользователя
+    private void startNewCycle(String chatId) {
+        SendMessage message = new SendMessage();
+        message.setChatId(chatId);
+        message.setText("Новый цикл начат.");
+        try {
+            execute(message);
+        } catch (TelegramApiException e) {
+            log.error("Ошибка при отправке сообщения: {}", e.getMessage());
+        }
     }
 }
