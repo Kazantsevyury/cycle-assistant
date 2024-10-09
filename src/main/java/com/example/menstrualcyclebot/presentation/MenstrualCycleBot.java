@@ -4,10 +4,12 @@ import com.example.menstrualcyclebot.domain.MenstrualCycle;
 import com.example.menstrualcyclebot.domain.User;
 import com.example.menstrualcyclebot.repository.CycleRepository;
 import com.example.menstrualcyclebot.repository.UserRepository;
+import com.example.menstrualcyclebot.service.DatabaseService;
 import com.example.menstrualcyclebot.utils.UserState;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import org.telegram.telegrambots.bots.DefaultBotOptions;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -33,18 +35,20 @@ public class MenstrualCycleBot extends TelegramLongPollingBot {
     private final String botUsername;
     private final UserRepository userRepository;
     private final CycleRepository cycleRepository;
+    private final DatabaseService databaseService;
     private final Map<Long, MenstrualCycle> dataEntrySessions = new HashMap<>();
     private final Map<Long, UserState> userStates = new HashMap<>();
     private final Map<Long, MenstrualCycle> partialCycleData = new HashMap<>();
 
 
     @Autowired
-    public MenstrualCycleBot(String botToken, String botUsername, UserRepository userRepository, CycleRepository cycleRepository) {
+    public MenstrualCycleBot(String botToken, String botUsername, UserRepository userRepository, CycleRepository cycleRepository, DatabaseService databaseService) {
         super(new DefaultBotOptions(), botToken);
         this.botToken = botToken;
         this.botUsername = botUsername;
         this.userRepository = userRepository;
         this.cycleRepository = cycleRepository;
+        this.databaseService = databaseService;
     }
     @Override
     public void onUpdateReceived(Update update) {
@@ -91,12 +95,20 @@ public class MenstrualCycleBot extends TelegramLongPollingBot {
                 case "🔄 Новый цикл":
                     handleNewCycle(chatId);
                     break;
+                case "Удалить базу":
+                    deleteAllData(chatId);
+                    break;
+
                 default:
                     sendMessage(chatId, "Неизвестная команда. Попробуйте снова.");
             }
         }
     }
-
+    private void deleteAllData(long chatId) {
+        sendMessage(chatId, "База стерта");
+        databaseService.deleteAllData();
+        sendMessageWithKeyboard(chatId, "Выберите опцию ниже:", welcomeKeyboard());
+    }
     // Заглушки функций
     private void handleInfo(long chatId) {
         sendMessage(chatId, "Функционал разрабатывается: Информация о боте.");
@@ -109,6 +121,7 @@ public class MenstrualCycleBot extends TelegramLongPollingBot {
         partialCycleData.put(chatId, new MenstrualCycle());
         sendMessage(chatId, "Пожалуйста, введите длительность вашего цикла (в днях):");
     }
+    @Transactional
     private void handleDataEntrySteps(long chatId, String messageText) {
         UserState currentState = userStates.get(chatId);
         MenstrualCycle cycle = partialCycleData.get(chatId);
