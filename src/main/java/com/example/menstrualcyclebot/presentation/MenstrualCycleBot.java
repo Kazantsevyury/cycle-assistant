@@ -58,7 +58,7 @@ public class MenstrualCycleBot extends TelegramLongPollingBot {
 
             // Проверяем, находится ли пользователь в процессе ввода данных
             if (userStates.containsKey(chatId) && userStates.get(chatId) != UserState.NONE) {
-                handleDataEntrySteps(chatId, messageText);
+                handleDataEntrySteps(update, messageText); // Передаем update и messageText
                 return;
             }
 
@@ -122,7 +122,8 @@ public class MenstrualCycleBot extends TelegramLongPollingBot {
         sendMessage(chatId, "Пожалуйста, введите длительность вашего цикла (в днях):");
     }
     @Transactional
-    private void handleDataEntrySteps(long chatId, String messageText) {
+    private void handleDataEntrySteps(Update update, String messageText) {
+        long chatId = update.getMessage().getChatId(); // Получаем chatId из update
         UserState currentState = userStates.get(chatId);
         MenstrualCycle cycle = partialCycleData.get(chatId);
 
@@ -153,6 +154,9 @@ public class MenstrualCycleBot extends TelegramLongPollingBot {
                     User user = userRepository.findById(chatId).orElseGet(() -> {
                         User newUser = new User();
                         newUser.setChatId(chatId);
+
+                        String username = update.getMessage().getFrom().getUserName();
+                        newUser.setUsername(username);
                         return userRepository.save(newUser);
                     });
                     cycle.setUser(user);
