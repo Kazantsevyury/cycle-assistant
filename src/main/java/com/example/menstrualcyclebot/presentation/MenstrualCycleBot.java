@@ -4,7 +4,9 @@ import com.example.menstrualcyclebot.domain.MenstrualCycle;
 import com.example.menstrualcyclebot.domain.User;
 import com.example.menstrualcyclebot.repository.CycleRepository;
 import com.example.menstrualcyclebot.repository.UserRepository;
-import com.example.menstrualcyclebot.service.DatabaseService;
+
+import com.example.menstrualcyclebot.service.*;
+
 import com.example.menstrualcyclebot.utils.UserState;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,13 +15,16 @@ import org.springframework.transaction.annotation.Transactional;
 import org.telegram.telegrambots.bots.DefaultBotOptions;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
+import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import com.example.menstrualcyclebot.utils.CycleCalculator;
 
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
+import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
 import java.util.*;
 
@@ -35,7 +40,10 @@ public class MenstrualCycleBot extends TelegramLongPollingBot {
     private final String botUsername;
     private final UserRepository userRepository;
     private final CycleRepository cycleRepository;
+
+    private final CalendarService calendarService = new CalendarService();
     private final DatabaseService databaseService;
+
     private final Map<Long, MenstrualCycle> dataEntrySessions = new HashMap<>();
     private final Map<Long, UserState> userStates = new HashMap<>();
     private final Map<Long, MenstrualCycle> partialCycleData = new HashMap<>();
@@ -102,6 +110,10 @@ public class MenstrualCycleBot extends TelegramLongPollingBot {
                 default:
                     sendMessage(chatId, "Неизвестная команда. Попробуйте снова.");
             }
+        }
+        //  Обработка callback data для календаря
+        if (update.hasCallbackQuery()) {
+            handleCallback(update.getCallbackQuery());
         }
     }
     private void deleteAllData(long chatId) {
@@ -219,11 +231,49 @@ public class MenstrualCycleBot extends TelegramLongPollingBot {
         sendMessageWithKeyboard(chatId, "Выберите опцию в основном меню:", createMenuKeyboard());
     }
 
+    @Transactional
     private void handleCalendar(long chatId) {
-        sendMessage(chatId, "Функционал разрабатывается: Открыть календарь.");
-        // Переход на главное меню
-        sendMessageWithKeyboard(chatId, "Выберите опцию в основном меню:", createMenuKeyboard());
+        // Создаем календарь на октябрь 2024 года (можно поменять на текущий год и месяц)
+        InlineKeyboardMarkup calendarMarkup = calendarService.getCalendar(2024, 10);
+
+        // Создаем сообщение с текстом и прикрепляем клавиатуру календаря
+        SendMessage message = new SendMessage();
+        message.setChatId(String.valueOf(chatId));
+        message.setText("Ваш календарь на октябрь:");
+        message.setReplyMarkup(calendarMarkup); // Прикрепляем разметку
+
+        // Отправляем сообщение
+        try {
+            execute(message); // метод execute отправляет сообщение в чат
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
+    private void handleCallback(CallbackQuery callbackQuery) {
+        String callbackData = callbackQuery.getData();
+        if (callbackData.startsWith("navigate:")) {
+            // Извлекаем год и месяц из callbackData
+            String[] data = callbackData.split(":");
+            int year = Integer.parseInt(data[1]);
+            int month = Integer.parseInt(data[2]);
+
+            // Генерируем обновлённый календарь
+            EditMessageText editMessage = new EditMessageText();
+            editMessage.setChatId(callbackQuery.getMessage().getChatId().toString());
+            editMessage.setMessageId(callbackQuery.getMessage().getMessageId());
+            editMessage.setText("Календарь:");
+            editMessage.setReplyMarkup(calendarService.getCalendar(year, month));
+
+            try {
+                execute(editMessage);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+
+
 
     private void handleNewCycle(long chatId) {
         sendMessage(chatId, "Функционал разрабатывается: Начать новый цикл.");
