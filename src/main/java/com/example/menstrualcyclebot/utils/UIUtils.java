@@ -9,28 +9,6 @@ import java.util.List;
 
 public class UIUtils {
 
-    public static ReplyKeyboardMarkup welcomeKeyboard() {
-        ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
-        keyboardMarkup.setResizeKeyboard(true);
-        keyboardMarkup.setOneTimeKeyboard(false);
-
-        List<KeyboardRow> keyboard = new ArrayList<>();
-
-        // Первая строка с кнопками "info" и "ввести данные"
-        KeyboardRow row1 = new KeyboardRow();
-        row1.add(new KeyboardButton("ℹ️ info"));
-        row1.add(new KeyboardButton("✍️ Ввести данные"));
-        KeyboardRow row2 = new KeyboardRow();
-        row2.add(new KeyboardButton("Удалить базу"));
-        // Добавляем строку на клавиатуру
-        keyboard.add(row1);
-        keyboard.add(row2);
-
-        // Устанавливаем клавиатуру
-        keyboardMarkup.setKeyboard(keyboard);
-        return keyboardMarkup;
-    }
-
     public static ReplyKeyboardMarkup createMenuKeyboard() {
         ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
         keyboardMarkup.setResizeKeyboard(true);

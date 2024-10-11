@@ -2,17 +2,14 @@ package com.example.menstrualcyclebot.presentation;
 
 import com.example.menstrualcyclebot.domain.MenstrualCycle;
 import com.example.menstrualcyclebot.domain.User;
-import com.example.menstrualcyclebot.repository.CycleRepository;
-import com.example.menstrualcyclebot.repository.UserRepository;
 
 import com.example.menstrualcyclebot.service.*;
 
 import com.example.menstrualcyclebot.utils.UserState;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import org.telegram.telegrambots.bots.DefaultBotOptions;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
@@ -24,22 +21,22 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import com.example.menstrualcyclebot.utils.CycleCalculator;
 
 import java.time.LocalDate;
-import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
 import java.util.*;
 
 import static com.example.menstrualcyclebot.utils.UIUtils.createMenuKeyboard;
-import static com.example.menstrualcyclebot.utils.UIUtils.welcomeKeyboard;
 
-
+@AllArgsConstructor
 @Slf4j
 @Component
 public class MenstrualCycleBot extends TelegramLongPollingBot {
 
     private final String botToken;
     private final String botUsername;
-    private final UserRepository userRepository;
-    private final CycleRepository cycleRepository;
+
+    private final UserService userService;
+    private final CycleService cycleService;
+    private final UserCycleManagementService userCycleManagementService;
 
     private final CalendarService calendarService = new CalendarService();
     private final DatabaseService databaseService;
@@ -48,36 +45,35 @@ public class MenstrualCycleBot extends TelegramLongPollingBot {
     private final Map<Long, UserState> userStates = new HashMap<>();
     private final Map<Long, MenstrualCycle> partialCycleData = new HashMap<>();
 
-
-    @Autowired
-    public MenstrualCycleBot(String botToken, String botUsername, UserRepository userRepository, CycleRepository cycleRepository, DatabaseService databaseService) {
-        super(new DefaultBotOptions(), botToken);
-        this.botToken = botToken;
-        this.botUsername = botUsername;
-        this.userRepository = userRepository;
-        this.cycleRepository = cycleRepository;
-        this.databaseService = databaseService;
-    }
     @Override
     public void onUpdateReceived(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
             String messageText = update.getMessage().getText();
             long chatId = update.getMessage().getChatId();
 
+            // Проверяем, есть ли пользователь в базе данных
+            if (!userService.existsById(chatId)) {
+                // Если это первый раз, когда пользователь взаимодействует с ботом, отправляем приветственное сообщение
+                //sendMessage(chatId, "Привет! Я твой помощник для отслеживания менструального цикла. Нажми /start, чтобы начать.");
+                // Сохраняем пользователя в базу данных, чтобы не отправлять приветственное сообщение снова
+                User newUser = new User();
+                newUser.setChatId(chatId);
+                newUser.setUsername(update.getMessage().getFrom().getUserName());
+                userService.save(newUser);
+                handleDataEntry(chatId);
+                return;
+            }
+
             // Проверяем, находится ли пользователь в процессе ввода данных
             if (userStates.containsKey(chatId) && userStates.get(chatId) != UserState.NONE) {
-                handleDataEntrySteps(update, messageText); // Передаем update и messageText
+                handleDataEntrySteps(update, messageText);
                 return;
             }
 
             // Иначе обрабатываем команды
             switch (messageText) {
                 case "/start":
-                    // Показать стартовое меню
-                    sendMessageWithKeyboard(chatId, "Добро пожаловать! Выберите опцию ниже:", welcomeKeyboard());
-                    break;
-                case "ℹ️ info":
-                    handleInfo(chatId);
+                    // Заглушка
                     break;
                 case "✍️ Ввести данные":
                     handleDataEntry(chatId);
@@ -119,13 +115,7 @@ public class MenstrualCycleBot extends TelegramLongPollingBot {
     private void deleteAllData(long chatId) {
         sendMessage(chatId, "База стерта");
         databaseService.deleteAllData();
-        sendMessageWithKeyboard(chatId, "Выберите опцию ниже:", welcomeKeyboard());
-    }
-    // Заглушки функций
-    private void handleInfo(long chatId) {
-        sendMessage(chatId, "Функционал разрабатывается: Информация о боте.");
-        // Возврат к стартовому меню
-        sendMessageWithKeyboard(chatId, "Выберите опцию ниже:", welcomeKeyboard());
+        sendMessageWithKeyboard(chatId, "Выберите опцию ниже:", createMenuKeyboard());
     }
 
     private void handleDataEntry(long chatId) {
@@ -135,7 +125,7 @@ public class MenstrualCycleBot extends TelegramLongPollingBot {
     }
     @Transactional
     private void handleDataEntrySteps(Update update, String messageText) {
-        long chatId = update.getMessage().getChatId(); // Получаем chatId из update
+        long chatId = update.getMessage().getChatId();
         UserState currentState = userStates.get(chatId);
         MenstrualCycle cycle = partialCycleData.get(chatId);
 
@@ -163,20 +153,20 @@ public class MenstrualCycleBot extends TelegramLongPollingBot {
                     userStates.put(chatId, UserState.NONE);
 
                     // Связываем цикл с пользователем
-                    User user = userRepository.findById(chatId).orElseGet(() -> {
+                    User user = userService.findById(chatId).orElseGet(() -> {
                         User newUser = new User();
                         newUser.setChatId(chatId);
 
                         String username = update.getMessage().getFrom().getUserName();
                         newUser.setUsername(username);
-                        return userRepository.save(newUser);
+                        return userService.save(newUser);
                     });
                     cycle.setUser(user);
 
                     CycleCalculator.calculateCycleFields(cycle);
 
                     // Сохраняем цикл в репозитории
-                    cycleRepository.save(cycle);
+                    cycleService.save(cycle);
 
                     sendMessage(chatId, "Спасибо! Ваши данные сохранены.");
                     sendMessageWithKeyboard(chatId, "Выберите опцию в основном меню:", createMenuKeyboard());
