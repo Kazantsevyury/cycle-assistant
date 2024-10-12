@@ -1,6 +1,6 @@
-package com.example.menstrualcyclebot.service;
+package com.example.menstrualcyclebot.service.sbservices;
 
-import com.example.menstrualcyclebot.domain.MenstrualCycle;
+import com.example.menstrualcyclebot.domain.Cycle;
 import com.example.menstrualcyclebot.repository.CycleRepository;
 import org.springframework.stereotype.Service;
 
@@ -17,17 +17,17 @@ public class CycleService {
     }
 
     // Найти цикл по ID
-    public Optional<MenstrualCycle> findById(Long cycleId) {
+    public Optional<Cycle> findById(Long cycleId) {
         return cycleRepository.findById(cycleId);
     }
 
     // Найти все циклы
-    public List<MenstrualCycle> findAll() {
+    public List<Cycle> findAll() {
         return cycleRepository.findAll();
     }
 
     // Сохранить цикл
-    public MenstrualCycle save(MenstrualCycle cycle) {
+    public Cycle save(Cycle cycle) {
         return cycleRepository.save(cycle);
     }
 
@@ -37,7 +37,7 @@ public class CycleService {
     }
 
     // Обновить цикл
-    public MenstrualCycle updateCycle(MenstrualCycle cycle) {
+    public Cycle updateCycle(Cycle cycle) {
         if (cycleRepository.existsById(cycle.getCycleId())) {
             return cycleRepository.save(cycle);
         } else {

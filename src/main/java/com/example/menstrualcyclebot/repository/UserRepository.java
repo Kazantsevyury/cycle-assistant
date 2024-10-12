@@ -11,7 +11,6 @@ import java.util.Optional;
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
 
-    @Query("SELECT u FROM User u LEFT JOIN FETCH u.menstrualCycles WHERE u.chatId = :chatId")
-    Optional<User> findUserWithCycles(@Param("chatId") Long chatId);
+
 
 }

@@ -1,10 +1,13 @@
 package com.example.menstrualcyclebot.presentation;
 
-import com.example.menstrualcyclebot.domain.MenstrualCycle;
+import com.example.menstrualcyclebot.domain.Cycle;
 import com.example.menstrualcyclebot.domain.User;
 
-import com.example.menstrualcyclebot.service.*;
-
+import com.example.menstrualcyclebot.service.CalendarService;
+import com.example.menstrualcyclebot.service.sbservices.CycleService;
+import com.example.menstrualcyclebot.service.sbservices.DatabaseService;
+import com.example.menstrualcyclebot.service.sbservices.UserCycleManagementService;
+import com.example.menstrualcyclebot.service.sbservices.UserService;
 import com.example.menstrualcyclebot.utils.UserState;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,24 +41,23 @@ public class MenstrualCycleBot extends TelegramLongPollingBot {
     private final CycleService cycleService;
     private final UserCycleManagementService userCycleManagementService;
 
-    private final CalendarService calendarService = new CalendarService();
+    private final CalendarService calendarService ;
     private final DatabaseService databaseService;
 
-    private final Map<Long, MenstrualCycle> dataEntrySessions = new HashMap<>();
+    private final Map<Long, Cycle> dataEntrySessions = new HashMap<>();
     private final Map<Long, UserState> userStates = new HashMap<>();
-    private final Map<Long, MenstrualCycle> partialCycleData = new HashMap<>();
+    private final Map<Long, Cycle> partialCycleData = new HashMap<>();
 
     @Override
     public void onUpdateReceived(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
-            String messageText = update.getMessage().getText();
+            // Обработка текстовых сообщений
             long chatId = update.getMessage().getChatId();
+            String messageText = update.getMessage().getText();
 
             // Проверяем, есть ли пользователь в базе данных
             if (!userService.existsById(chatId)) {
                 // Если это первый раз, когда пользователь взаимодействует с ботом, отправляем приветственное сообщение
-                //sendMessage(chatId, "Привет! Я твой помощник для отслеживания менструального цикла. Нажми /start, чтобы начать.");
-                // Сохраняем пользователя в базу данных, чтобы не отправлять приветственное сообщение снова
                 User newUser = new User();
                 newUser.setChatId(chatId);
                 newUser.setUsername(update.getMessage().getFrom().getUserName());
@@ -70,10 +72,10 @@ public class MenstrualCycleBot extends TelegramLongPollingBot {
                 return;
             }
 
-            // Иначе обрабатываем команды
+            // Обработка команд
             switch (messageText) {
                 case "/start":
-                    // Заглушка
+                    sendMessage(chatId, "Добро пожаловать! Выберите команду для начала.");
                     break;
                 case "✍️ Ввести данные":
                     handleDataEntry(chatId);
@@ -102,16 +104,17 @@ public class MenstrualCycleBot extends TelegramLongPollingBot {
                 case "Удалить базу":
                     deleteAllData(chatId);
                     break;
-
                 default:
                     sendMessage(chatId, "Неизвестная команда. Попробуйте снова.");
             }
-        }
-        //  Обработка callback data для календаря
-        if (update.hasCallbackQuery()) {
-            handleCallback(update.getCallbackQuery());
+        } else if (update.hasCallbackQuery()) {
+            // Обработка нажатий на кнопки (CallbackQuery)
+            CallbackQuery callbackQuery = update.getCallbackQuery();
+            long chatId = callbackQuery.getMessage().getChatId();
+            handleCallback(callbackQuery, chatId);
         }
     }
+
     private void deleteAllData(long chatId) {
         sendMessage(chatId, "База стерта");
         databaseService.deleteAllData();
@@ -120,14 +123,14 @@ public class MenstrualCycleBot extends TelegramLongPollingBot {
 
     private void handleDataEntry(long chatId) {
         userStates.put(chatId, UserState.AWAITING_CYCLE_LENGTH);
-        partialCycleData.put(chatId, new MenstrualCycle());
+        partialCycleData.put(chatId, new Cycle());
         sendMessage(chatId, "Пожалуйста, введите длительность вашего цикла (в днях):");
     }
     @Transactional
     private void handleDataEntrySteps(Update update, String messageText) {
         long chatId = update.getMessage().getChatId();
         UserState currentState = userStates.get(chatId);
-        MenstrualCycle cycle = partialCycleData.get(chatId);
+        Cycle cycle = partialCycleData.get(chatId);
 
         try {
             switch (currentState) {
@@ -173,6 +176,7 @@ public class MenstrualCycleBot extends TelegramLongPollingBot {
 
                     // Очищаем временные данные
                     partialCycleData.remove(chatId);
+
                     break;
 
                 default:
@@ -224,7 +228,7 @@ public class MenstrualCycleBot extends TelegramLongPollingBot {
     @Transactional
     private void handleCalendar(long chatId) {
         // Создаем календарь на октябрь 2024 года (можно поменять на текущий год и месяц)
-        InlineKeyboardMarkup calendarMarkup = calendarService.getCalendar(2024, 10);
+        InlineKeyboardMarkup calendarMarkup = calendarService.getCalendar(2024, 10,chatId);
 
         // Создаем сообщение с текстом и прикрепляем клавиатуру календаря
         SendMessage message = new SendMessage();
@@ -239,7 +243,7 @@ public class MenstrualCycleBot extends TelegramLongPollingBot {
             e.printStackTrace();
         }
     }
-    private void handleCallback(CallbackQuery callbackQuery) {
+    private void handleCallback(CallbackQuery callbackQuery, long chatId) {
         String callbackData = callbackQuery.getData();
         if (callbackData.startsWith("navigate:")) {
             // Извлекаем год и месяц из callbackData
@@ -249,10 +253,10 @@ public class MenstrualCycleBot extends TelegramLongPollingBot {
 
             // Генерируем обновлённый календарь
             EditMessageText editMessage = new EditMessageText();
-            editMessage.setChatId(callbackQuery.getMessage().getChatId().toString());
+            editMessage.setChatId(String.valueOf(chatId));
             editMessage.setMessageId(callbackQuery.getMessage().getMessageId());
             editMessage.setText("Календарь:");
-            editMessage.setReplyMarkup(calendarService.getCalendar(year, month));
+            editMessage.setReplyMarkup(calendarService.getCalendar(year, month, chatId));
 
             try {
                 execute(editMessage);
@@ -261,6 +265,7 @@ public class MenstrualCycleBot extends TelegramLongPollingBot {
             }
         }
     }
+
 
 
 

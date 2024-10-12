@@ -27,6 +27,6 @@ public class User {
     @Column(name = "birth_date")
     private LocalDate birthDate; // День рождения пользователя
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<MenstrualCycle> menstrualCycles; // Список циклов, связанных с пользователем
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    private List<Cycle> cycles; // Список циклов, связанных с пользователем
 }

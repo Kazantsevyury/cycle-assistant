@@ -1,12 +1,12 @@
 package com.example.menstrualcyclebot.utils;
 
-import com.example.menstrualcyclebot.domain.MenstrualCycle;
+import com.example.menstrualcyclebot.domain.Cycle;
 
 import java.time.LocalDate;
 
 public class CycleCalculator {
 
-    public static void calculateCycleFields(MenstrualCycle cycle) {
+    public static void calculateCycleFields(Cycle cycle) {
         int D = cycle.getCycleLength();
         int periodLength = cycle.getPeriodLength();
         LocalDate startDate = cycle.getStartDate();

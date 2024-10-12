@@ -8,7 +8,7 @@ import java.time.LocalDate;
 @Data
 @Entity
 @Table(name = "menstrual_cycles")
-public class MenstrualCycle {
+public class Cycle {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY) // Генерация уникального идентификатора

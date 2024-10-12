@@ -1,34 +1,33 @@
-package com.example.menstrualcyclebot.service;
+package com.example.menstrualcyclebot.service.sbservices;
 
 
 import com.example.menstrualcyclebot.domain.User;
 import com.example.menstrualcyclebot.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
 
+@RequiredArgsConstructor
 @Service
 public class UserService {
 
     private final UserRepository userRepository;
 
-    public UserService(UserRepository userRepository) {
-        this.userRepository = userRepository;
-    }
 
-    // Найти пользователя по ID
+
+    @Transactional(readOnly = true)
     public Optional<User> findById(Long chatId) {
         return userRepository.findById(chatId);
     }
 
-    // Найти всех пользователей
     public List<User> findAll() {
         return userRepository.findAll();
     }
 
-    // Сохранить пользователя
+    @Transactional(readOnly = true)
     public User save(User user) {
         return userRepository.save(user);
     }
@@ -47,12 +46,9 @@ public class UserService {
         }
     }
 
-    // Найти пользователя с менструальными циклами
-    public Optional<User> findUserWithCycles(Long chatId) {
-        return userRepository.findUserWithCycles(chatId);
-    }
-    // Проверить, существует ли пользователь по ID
+    @Transactional(readOnly = true)
     public boolean existsById(Long chatId) {
         return userRepository.existsById(chatId);
     }
+
 }

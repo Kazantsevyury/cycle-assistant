@@ -3,10 +3,11 @@ package com.example.menstrualcyclebot.config;
 import com.example.menstrualcyclebot.presentation.MenstrualCycleBot;
 import com.example.menstrualcyclebot.repository.CycleRepository;
 import com.example.menstrualcyclebot.repository.UserRepository;
-import com.example.menstrualcyclebot.service.DatabaseService;
-import com.example.menstrualcyclebot.service.CycleService;
-import com.example.menstrualcyclebot.service.UserCycleManagementService;
-import com.example.menstrualcyclebot.service.UserService;
+import com.example.menstrualcyclebot.service.CalendarService;
+import com.example.menstrualcyclebot.service.sbservices.DatabaseService;
+import com.example.menstrualcyclebot.service.sbservices.CycleService;
+import com.example.menstrualcyclebot.service.sbservices.UserCycleManagementService;
+import com.example.menstrualcyclebot.service.sbservices.UserService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -41,8 +42,9 @@ public class BotConfig {
             UserService userService,
             CycleService cycleService,
             UserCycleManagementService userCycleManagementService,
+            CalendarService calendarService,
             DatabaseService databaseService) {
-        return new MenstrualCycleBot(botToken, botUsername, userService, cycleService, userCycleManagementService, databaseService);
+        return new MenstrualCycleBot(botToken, botUsername, userService, cycleService, userCycleManagementService, calendarService, databaseService);
     }
 
     @Bean

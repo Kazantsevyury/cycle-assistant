@@ -1,5 +1,10 @@
 package com.example.menstrualcyclebot.service;
 
+import com.example.menstrualcyclebot.domain.Cycle;
+import com.example.menstrualcyclebot.domain.User;
+import com.example.menstrualcyclebot.service.sbservices.UserCycleManagementService;
+import com.example.menstrualcyclebot.service.sbservices.UserService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
@@ -7,10 +12,15 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+
 @Service
+@RequiredArgsConstructor // Lombok автоматически создаёт конструктор с final полями
 public class CalendarService {
 
-    public InlineKeyboardMarkup getCalendar(int year, int month) {
+    private final UserService userService;
+
+    public InlineKeyboardMarkup getCalendar(int year, int month, long userChatId) {
         InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
 
@@ -30,6 +40,21 @@ public class CalendarService {
         int daysInMonth = firstDayOfMonth.lengthOfMonth();
         int firstDayOfWeek = firstDayOfMonth.getDayOfWeek().getValue(); // 1 = Пн, 7 = Вс
 
+        // Получаем пользователя через UserService
+        Optional<User> optionalUser = userService.findById(userChatId);
+
+        // Проверяем, найден ли пользователь
+        if (!optionalUser.isPresent()) {
+            throw new IllegalArgumentException("Пользователь с chatId " + userChatId + " не найден");
+        }
+
+        User user = optionalUser.get();
+
+        // Проверяем, есть ли у пользователя зарегистрированные циклы
+        if (user.getCycles() == null || user.getCycles().isEmpty()) {
+            throw new IllegalArgumentException("У вас нет зарегистрированных циклов.");
+        }
+
         // Переменная для отслеживания дня
         int currentDay = 1;
 
@@ -42,16 +67,11 @@ public class CalendarService {
                     // Добавляем пустые ячейки в начале месяца
                     row.add(createButton(" "));
                 } else if (currentDay <= daysInMonth) {
-                    // Добавляем кнопку с днем месяца и смайликом (меняется по примеру)
-                    if (currentDay <= 5) {
-                        row.add(createButton(currentDay + " 💧"));
-                    } else if (currentDay <= 10) {
-                        row.add(createButton(currentDay + " 💋"));
-                    } else if (currentDay <= 20) {
-                        row.add(createButton(currentDay + " 🌞"));
-                    } else {
-                        row.add(createButton(currentDay + " 📅"));
-                    }
+                    String dayText = String.valueOf(currentDay);
+                    // Если у пользователя есть циклы, находим текущий цикл
+                    Cycle cycle = user.getCycles().get(0);  // Предполагаем, что хотя бы один цикл есть
+                    dayText += getEmojiForDay(cycle, year, month, currentDay);
+                    row.add(createButton(dayText));
                     currentDay++;
                 } else {
                     // Добавляем пустые ячейки в конце месяца
@@ -74,6 +94,38 @@ public class CalendarService {
         inlineKeyboardMarkup.setKeyboard(keyboard);
         return inlineKeyboardMarkup;
     }
+    private String getEmojiForDay(Cycle cycle, int year, int month, int day) {
+        LocalDate date = LocalDate.of(year, month, day); // Дата текущего дня
+
+        // Проверяем, попадает ли текущий день в рамки цикла
+        if (!date.isBefore(cycle.getStartDate())) {
+
+            // Проверка на менструацию
+            LocalDate periodEndDate = cycle.getStartDate().plusDays(cycle.getPeriodLength() - 1); // Последний день менструации
+            if (!date.isAfter(periodEndDate)) {
+                return " 💧"; // Менструация
+            }
+
+            // Проверка на овуляцию
+            LocalDate ovulationStartDate = cycle.getStartDate().plusDays(cycle.getOvulationStartDay() - 1); // Дата начала овуляции
+            LocalDate ovulationEndDate = cycle.getStartDate().plusDays(cycle.getOvulationEndDay() - 1); // Дата окончания овуляции
+            if (!date.isBefore(ovulationStartDate) && !date.isAfter(ovulationEndDate)) {
+                return " 💋"; // Овуляция
+            }
+
+            // Проверка на лютеиновую фазу
+            LocalDate lutealPhaseStartDate = cycle.getLutealPhaseStart(); // Дата начала лютеиновой фазы
+            LocalDate lutealPhaseEndDate = cycle.getLutealPhaseEnd(); // Дата окончания лютеиновой фазы
+            if (!date.isBefore(lutealPhaseStartDate) && !date.isAfter(lutealPhaseEndDate)) {
+                return " 🌞"; // Лютеиновая фаза
+            }
+        }
+
+        // День без фазы
+        return "";
+    }
+
+
 
     private InlineKeyboardButton createButton(String text) {
         InlineKeyboardButton button = new InlineKeyboardButton();
@@ -83,7 +135,6 @@ public class CalendarService {
     }
 
     private InlineKeyboardButton createNavigationButton(String text, int year, int month) {
-        // Учитываем переходы между годами
         if (month < 1) {
             month = 12;
             year -= 1;
@@ -91,21 +142,9 @@ public class CalendarService {
             month = 1;
             year += 1;
         }
-
         InlineKeyboardButton button = new InlineKeyboardButton();
         button.setText(text);
-        // Передаём в callbackData текущий год и месяц, чтобы при нажатии бот знал, что обновлять
         button.setCallbackData("navigate:" + year + ":" + month);
         return button;
-    }
-
-    public InlineKeyboardMarkup handleNavigation(String callbackData) {
-        // Пример обработки callbackData, которая будет приходить в формате "navigate:2024:10"
-        String[] data = callbackData.split(":");
-        int year = Integer.parseInt(data[1]);
-        int month = Integer.parseInt(data[2]);
-
-        // Обновляем календарь на основе переданного месяца и года
-        return getCalendar(year, month);
     }
 }
