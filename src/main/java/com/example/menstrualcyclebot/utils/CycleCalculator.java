@@ -1,9 +1,12 @@
 package com.example.menstrualcyclebot.utils;
 
 import com.example.menstrualcyclebot.domain.Cycle;
+import org.springframework.context.annotation.Bean;
+import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 
+@Component
 public class CycleCalculator {
 
     public static void calculateCycleFields(Cycle cycle) {

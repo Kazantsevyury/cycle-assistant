@@ -1,6 +1,6 @@
 package com.example.menstrualcyclebot.config;
 
-import com.example.menstrualcyclebot.presentation.MenstrualCycleBot;
+import com.example.menstrualcyclebot.presentation.Bot;
 import com.example.menstrualcyclebot.repository.CycleRepository;
 import com.example.menstrualcyclebot.repository.UserRepository;
 import com.example.menstrualcyclebot.service.CalendarService;
@@ -8,12 +8,14 @@ import com.example.menstrualcyclebot.service.sbservices.DatabaseService;
 import com.example.menstrualcyclebot.service.sbservices.CycleService;
 import com.example.menstrualcyclebot.service.sbservices.UserCycleManagementService;
 import com.example.menstrualcyclebot.service.sbservices.UserService;
+import com.example.menstrualcyclebot.utils.CycleCalculator;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
+
 
 @Configuration
 public class BotConfig {
@@ -24,11 +26,11 @@ public class BotConfig {
     private String botUsername;
 
     @Bean
-    public TelegramBotsApi telegramBotsApi(MenstrualCycleBot menstrualCycleBot) {
+    public TelegramBotsApi telegramBotsApi(Bot bot) {
         TelegramBotsApi botsApi = null;
         try {
             botsApi = new TelegramBotsApi(DefaultBotSession.class);
-            botsApi.registerBot(menstrualCycleBot);
+            botsApi.registerBot(bot);
         } catch (TelegramApiException e) {
             e.printStackTrace();
         }
@@ -36,15 +38,16 @@ public class BotConfig {
     }
 
     @Bean
-    public MenstrualCycleBot menstrualCycleBot(
+    public Bot menstrualCycleBot(
             @Value("${telegram.bot.token}") String botToken,
             @Value("${telegram.bot.username}") String botUsername,
             UserService userService,
             CycleService cycleService,
             UserCycleManagementService userCycleManagementService,
             CalendarService calendarService,
-            DatabaseService databaseService) {
-        return new MenstrualCycleBot(botToken, botUsername, userService, cycleService, userCycleManagementService, calendarService, databaseService);
+            DatabaseService databaseService,
+            CycleCalculator cycleCalculator   ) {
+        return new Bot(botToken, botUsername, userService, cycleService, userCycleManagementService, calendarService, databaseService, cycleCalculator);
     }
 
     @Bean

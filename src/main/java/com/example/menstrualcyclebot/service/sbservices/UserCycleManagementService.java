@@ -16,19 +16,4 @@ public class UserCycleManagementService {
     private final CycleService cycleService;
 
 
-
-    @Transactional
-    public void addCycleToUser(Long chatId, Cycle cycle) {
-        Optional<User> optionalUser = userService.findById(chatId);
-        if (optionalUser.isPresent()) {
-            User user = optionalUser.get();
-            user.getCycles().add(cycle);
-            cycle.setUser(user);
-            userService.save(user);
-            cycleService.save(cycle);
-        } else {
-            throw new IllegalArgumentException("Пользователь с chatId " + chatId + " не найден");
-        }
-    }
-
 }

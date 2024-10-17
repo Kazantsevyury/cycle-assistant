@@ -13,7 +13,6 @@ public class UIUtils {
         ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
         keyboardMarkup.setResizeKeyboard(true);
         keyboardMarkup.setOneTimeKeyboard(false);
-
         List<KeyboardRow> keyboard = new ArrayList<>();
 
         KeyboardRow row1 = new KeyboardRow();
@@ -28,6 +27,7 @@ public class UIUtils {
 
         KeyboardRow row3 = new KeyboardRow();
         row3.add(new KeyboardButton("🔄 Новый цикл"));
+        row3.add(new KeyboardButton("✍️ Ввести данные"));
 
         KeyboardRow row4 = new KeyboardRow();
         row4.add(new KeyboardButton("Удалить базу"));

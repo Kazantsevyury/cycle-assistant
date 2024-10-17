@@ -27,23 +27,14 @@ public class UserService {
         return userRepository.findAll();
     }
 
-    @Transactional(readOnly = true)
-    public User save(User user) {
-        return userRepository.save(user);
+    @Transactional
+    public void save(User user) {
+        userRepository.save(user);
     }
 
     // Удалить пользователя по ID
     public void deleteById(Long chatId) {
         userRepository.deleteById(chatId);
-    }
-
-    // Обновить пользователя
-    public User updateUser(User user) {
-        if (userRepository.existsById(user.getChatId())) {
-            return userRepository.save(user);
-        } else {
-            throw new IllegalArgumentException("Пользователь с chatId " + user.getChatId() + " не найден");
-        }
     }
 
     @Transactional(readOnly = true)
