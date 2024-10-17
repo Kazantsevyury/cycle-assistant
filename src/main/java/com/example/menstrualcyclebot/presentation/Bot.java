@@ -89,10 +89,16 @@ public class Bot extends TelegramLongPollingBot {
                 // Заполнение имени, если оно доступно у пользователя Telegram
                 if (update.getMessage().getFrom().getFirstName() != null) {
                     newUser.setName(update.getMessage().getFrom().getFirstName());
+                } else {
+                    newUser.setName(newUser.getUsername());
                 }
-                // Дата рождения не передается из ТГ
                 userService.save(newUser);
             }
+
+            // Получение пользователя из базы данных
+            Optional<User> optionalUser = userService.findById(chatId);
+            User user = optionalUser.orElseThrow(() -> new IllegalStateException("User not found for chatId: " + chatId));
+            String salutation = user.getSalutation() != null ? user.getSalutation() : user.getName();
 
             // Обработка команд
             switch (messageText) {
@@ -103,6 +109,7 @@ public class Bot extends TelegramLongPollingBot {
                 case "✍️ Ввести данные":
                     handleDataEntry(chatId);
                     log.info("Пользователь с chatId {} выбрал ввод данных.", chatId);
+                    sendMessage(chatId, "Хорошо, " + salutation + ", приступим к вводу данных.");
                     break;
                 case "💡 Получить рекомендацию":
                     log.info("Пользователь с chatId {} запросил рекомендацию.", chatId);
@@ -138,13 +145,14 @@ public class Bot extends TelegramLongPollingBot {
                     break;
                 default:
                     log.warn("Пользователь с chatId {} ввел неизвестную команду: {}", chatId, messageText);
-                    sendMessage(chatId, "Неизвестная команда. Попробуйте снова.");
+                    sendMessage(chatId, "Неизвестная команда, " + salutation + ". Попробуйте снова.");
             }
         } catch (Exception e) {
             log.error("Ошибка при обработке сообщения от пользователя с chatId {}: {}", chatId, e.getMessage(), e);
             sendMessage(chatId, "Произошла ошибка. Попробуйте снова позже.");
         }
     }
+
 
 
     private void deleteAllData(long chatId) {
@@ -165,14 +173,13 @@ public class Bot extends TelegramLongPollingBot {
         partialCycleData.put(chatId, new Cycle());
         sendMessage(chatId, "Please enter your cycle length (in days):");
     }
-
     @Transactional
     private void handleDataEntrySteps(Update update, String messageText) {
         long chatId = update.getMessage().getChatId();
         UserState currentState = userStates.get(chatId);
         Cycle cycle = partialCycleData.get(chatId);
 
-        log.info("[handleDataEntrySteps] Processing data entry step for user with chatId: {}. Current state: {}", chatId, currentState);
+        log.info("[handleDataEntrySteps] Обработка шага ввода данных для пользователя с chatId: {}. Текущее состояние: {}", chatId, currentState);
 
         try {
             switch (currentState) {
@@ -190,14 +197,14 @@ public class Bot extends TelegramLongPollingBot {
                     break;
             }
         } catch (NumberFormatException e) {
-            log.error("[handleDataEntrySteps] Invalid number format entered by user with chatId: {}. Input: {}", chatId, messageText, e);
-            sendMessage(chatId, "Please enter a valid number.");
+            log.error("[handleDataEntrySteps] Неверный числовой формат, введенный пользователем с chatId: {}. Ввод: {}", chatId, messageText, e);
+            sendMessage(chatId, "Пожалуйста, введите корректное число.");
         } catch (DateTimeParseException e) {
-            log.error("[handleDataEntrySteps] Invalid date format entered by user with chatId: {}. Input: {}", chatId, messageText, e);
-            sendMessage(chatId, "Please enter the date in YYYY-MM-DD format.");
+            log.error("[handleDataEntrySteps] Неверный формат даты, введенный пользователем с chatId: {}. Ввод: {}", chatId, messageText, e);
+            sendMessage(chatId, "Пожалуйста, введите дату в формате ГГГГ-ММ-ДД.");
         } catch (Exception e) {
-            log.error("[handleDataEntrySteps] Unexpected error for user with chatId: {}. Error: {}", chatId, e.getMessage(), e);
-            sendMessage(chatId, "An error occurred. Please try again later.");
+            log.error("[handleDataEntrySteps] Неожиданная ошибка для пользователя с chatId: {}. Ошибка: {}", chatId, e.getMessage(), e);
+            sendMessage(chatId, "Произошла ошибка. Пожалуйста, попробуйте позже.");
             clearUserData(chatId);
         }
     }
@@ -205,32 +212,32 @@ public class Bot extends TelegramLongPollingBot {
     private void processCycleLength(long chatId, String messageText, Cycle cycle) {
         int cycleLength = Integer.parseInt(messageText);
         if (cycleLength <= 0) {
-            log.warn("[processCycleLength] User with chatId: {} entered non-positive cycle length: {}", chatId, cycleLength);
-            sendMessage(chatId, "Cycle length must be a positive number. Please try again:");
+            log.warn("[processCycleLength] Пользователь с chatId: {} ввел неположительную длину цикла: {}", chatId, cycleLength);
+            sendMessage(chatId, "Длина цикла должна быть положительным числом. Пожалуйста, попробуйте снова:");
             return;
         }
         cycle.setCycleLength(cycleLength);
         userStates.put(chatId, UserState.AWAITING_PERIOD_LENGTH);
-        sendMessage(chatId, "Enter your period length (in days):");
+        sendMessage(chatId, "Введите длину вашего периода (в днях):");
     }
 
     private void processPeriodLength(long chatId, String messageText, Cycle cycle) {
         int periodLength = Integer.parseInt(messageText);
         if (periodLength <= 0) {
-            log.warn("[processPeriodLength] User with chatId: {} entered non-positive period length: {}", chatId, periodLength);
-            sendMessage(chatId, "Period length must be a positive number. Please try again:");
+            log.warn("[processPeriodLength] Пользователь с chatId: {} ввел неположительную длину периода: {}", chatId, periodLength);
+            sendMessage(chatId, "Длина периода должна быть положительным числом. Пожалуйста, попробуйте снова:");
             return;
         }
         cycle.setPeriodLength(periodLength);
         userStates.put(chatId, UserState.AWAITING_START_DATE);
-        sendMessage(chatId, "Enter the start date of your last cycle (in YYYY-MM-DD format):");
+        sendMessage(chatId, "Введите дату начала вашего последнего цикла (в формате ГГГГ-ММ-ДД):");
     }
 
     private void processStartDate(long chatId, String messageText, Cycle cycle) {
         LocalDate startDate = LocalDate.parse(messageText);
         if (startDate.isAfter(LocalDate.now())) {
-            log.warn("[processStartDate] User with chatId: {} entered a future date: {}", chatId, startDate);
-            sendMessage(chatId, "Date cannot be in the future. Please enter a valid date:");
+            log.warn("[processStartDate] Пользователь с chatId: {} ввел дату в будущем: {}", chatId, startDate);
+            sendMessage(chatId, "Дата не может быть в будущем. Пожалуйста, введите корректную дату:");
             return;
         }
         cycle.setStartDate(startDate);
@@ -241,38 +248,38 @@ public class Bot extends TelegramLongPollingBot {
         try {
             userStates.put(chatId, UserState.NONE);
 
-            log.info("[completeDataEntry] Saving cycle data for user with chatId: {}", chatId);
+            log.info("[completeDataEntry] Сохранение данных цикла для пользователя с chatId: {}", chatId);
             Optional<User> optionalUser = userService.findById(chatId);
             if (optionalUser.isPresent()) {
                 cycle.setUser(optionalUser.get());
             } else {
-                throw new IllegalStateException("User not found for chatId: " + chatId);
-            }            cycleCalculator.calculateCycleFields(cycle);
+                throw new IllegalStateException("Пользователь не найден для chatId: " + chatId);
+            }
+            cycleCalculator.calculateCycleFields(cycle);
             cycleService.save(cycle);
 
-            sendMessage(chatId, "Thank you! Your data has been saved.");
-            sendMessageWithKeyboard(chatId, "Please select an option from the main menu:", createMenuKeyboard());
+            sendMessage(chatId, "Спасибо! Ваши данные сохранены.");
+            sendMessageWithKeyboard(chatId, "Пожалуйста, выберите вариант из главного меню:", createMenuKeyboard());
 
             partialCycleData.remove(chatId);
-            log.info("[completeDataEntry] Temporary cycle data cleared for user with chatId: {}", chatId);
+            log.info("[completeDataEntry] Временные данные цикла очищены для пользователя с chatId: {}", chatId);
         } catch (Exception e) {
-            log.error("[completeDataEntry] Error while saving data for user with chatId: {}. Error: {}", chatId, e.getMessage(), e);
-            sendMessage(chatId, "An error occurred while saving your data. Please try again later.");
+            log.error("[completeDataEntry] Ошибка при сохранении данных для пользователя с chatId: {}. Ошибка: {}", chatId, e.getMessage(), e);
+            sendMessage(chatId, "Произошла ошибка при сохранении ваших данных. Пожалуйста, попробуйте позже.");
         }
     }
+
     private void handleUnexpectedState(long chatId, UserState currentState) {
-        log.warn("[handleUnexpectedState] User with chatId: {} is in an unexpected state: {}", chatId, currentState);
+        log.warn("[handleUnexpectedState] Пользователь с chatId: {} находится в неожиданном состоянии: {}", chatId, currentState);
         sendMessage(chatId, "Произошла ошибка в процессе. Пожалуйста, начните сначала или выберите команду из меню.");
         userStates.put(chatId, UserState.NONE);
     }
 
     private void clearUserData(long chatId) {
-        log.info("[clearUserData] Clearing data for user with chatId: {}", chatId);
+        log.info("[clearUserData] Очистка данных для пользователя с chatId: {}", chatId);
         userStates.remove(chatId);
         partialCycleData.remove(chatId);
     }
-
-
 
     private void handleRecommendation(long chatId) {
         log.info("Функционал рекомендаций запрошен пользователем с chatId {}", chatId);

@@ -24,6 +24,9 @@ public class User {
     @Column(name = "name", length = 100)
     private String name; // Имя пользователя
 
+    @Column(name = "salutation", length = 20)
+    private String salutation; // Обращение к пользователю
+
     @Column(name = "birth_date")
     private LocalDate birthDate; // День рождения пользователя
 
