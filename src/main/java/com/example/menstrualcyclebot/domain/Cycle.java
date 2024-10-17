@@ -31,5 +31,5 @@ public class Cycle {
 
     private LocalDate lutealPhaseStart;     // Дата начала лютеиновой фазы
     private LocalDate lutealPhaseEnd;       // Дата окончания лютеиновой фазы (до конца цикла)
-
+    private LocalDate endDate;
 }

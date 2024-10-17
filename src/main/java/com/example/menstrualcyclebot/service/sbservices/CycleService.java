@@ -4,6 +4,7 @@ import com.example.menstrualcyclebot.domain.Cycle;
 import com.example.menstrualcyclebot.repository.CycleRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -44,4 +45,20 @@ public class CycleService {
             throw new IllegalArgumentException("Менструальный цикл с ID " + cycle.getCycleId() + " не найден");
         }
     }
+
+    public Cycle getActualCycle(List<Cycle> cycles) {
+        // Получаем текущую дату
+        LocalDate today = LocalDate.now();
+
+        // Ищем цикл, у которого endDate больше, чем текущий день
+        for (Cycle cycle : cycles) {
+            if (cycle.getEndDate().isAfter(today)) {
+                return cycle;  // Возвращаем первый найденный актуальный цикл
+            }
+        }
+
+        // Если ни один актуальный цикл не найден, выбрасываем исключение
+        throw new IllegalArgumentException("У пользователя нет актуальных циклов.");
+    }
 }
+

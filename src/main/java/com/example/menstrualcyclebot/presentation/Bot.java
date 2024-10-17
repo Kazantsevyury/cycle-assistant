@@ -90,7 +90,7 @@ public class Bot extends TelegramLongPollingBot {
                 if (update.getMessage().getFrom().getFirstName() != null) {
                     newUser.setName(update.getMessage().getFrom().getFirstName());
                 }
-                // Дата рождения не передается их ТГ
+                // Дата рождения не передается из ТГ
                 userService.save(newUser);
             }
 
@@ -285,9 +285,30 @@ public class Bot extends TelegramLongPollingBot {
     }
 
     private void handleCurrentDay(long chatId) {
-        log.info("Функционал текущего дня цикла запрошен пользователем с chatId {}", chatId);
-        sendMessageWithKeyboard(chatId, "Функционал разрабатывается: Показать текущий день цикла.", createMenuKeyboard());
+        Optional<User> optionalUser = userService.findById(chatId);
+
+        // Получаем список циклов пользователя
+        List<Cycle> cycles = optionalUser
+                .map(User::getCycles)
+                .orElse(Collections.emptyList());
+
+        try {
+            // Пытаемся получить актуальный цикл
+            Cycle actualCycle = cycleService.getActualCycle(cycles);
+
+            // Вычисляем текущий день цикла
+            LocalDate today = LocalDate.now();
+            int currentDay = (int) (today.toEpochDay() - actualCycle.getStartDate().toEpochDay()) + 1;
+
+            // Отправляем сообщение пользователю с текущим днем цикла
+            sendMessageWithKeyboard(chatId, "Сегодня: " + currentDay + " день цикла.", createMenuKeyboard());
+
+        } catch (IllegalArgumentException e) {
+            // Обрабатываем исключение, если актуальных циклов нет
+            sendMessageWithKeyboard(chatId, e.getMessage(), createMenuKeyboard());
+        }
     }
+
 
     private void handleProfileSettings(long chatId) {
         log.info("Функционал настройки профиля запрошен пользователем с chatId {}", chatId);

@@ -46,5 +46,9 @@ public class CycleCalculator {
         LocalDate lutealPhaseEnd = startDate.plusDays(D - 1);
         cycle.setLutealPhaseStart(lutealPhaseStart);
         cycle.setLutealPhaseEnd(lutealPhaseEnd);
+
+        // 7. Расчет даты конца цикла
+        LocalDate endDate = startDate.plusDays(D - 1);
+        cycle.setEndDate(endDate);  // Устанавливаем конец цикла
     }
 }
