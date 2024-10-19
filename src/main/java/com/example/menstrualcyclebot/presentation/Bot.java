@@ -3,12 +3,14 @@ package com.example.menstrualcyclebot.presentation;
 import com.example.menstrualcyclebot.domain.Cycle;
 import com.example.menstrualcyclebot.domain.User;
 import com.example.menstrualcyclebot.service.CalendarService;
+import com.example.menstrualcyclebot.service.UserEditService;
 import com.example.menstrualcyclebot.service.sbservices.CycleService;
 import com.example.menstrualcyclebot.service.sbservices.DatabaseService;
 import com.example.menstrualcyclebot.service.sbservices.UserCycleManagementService;
 import com.example.menstrualcyclebot.service.sbservices.UserService;
 import com.example.menstrualcyclebot.utils.UIUtils;
 import com.example.menstrualcyclebot.utils.UserState;
+import jakarta.annotation.PreDestroy;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +19,7 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import com.example.menstrualcyclebot.utils.CycleCalculator;
@@ -24,6 +27,9 @@ import com.example.menstrualcyclebot.utils.CycleCalculator;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static com.example.menstrualcyclebot.utils.UIUtils.createMenuKeyboard;
 import static com.example.menstrualcyclebot.utils.UserState.*;
@@ -42,6 +48,10 @@ public class Bot extends TelegramLongPollingBot {
     private final CalendarService calendarService;
     private final DatabaseService databaseService;
     private final CycleCalculator cycleCalculator;
+    private final UserEditService userEditService;
+
+    private final ExecutorService executorService = Executors.newFixedThreadPool(10); // Настрой количество потоков
+
     private final Map<Long, Cycle> dataEntrySessions = new HashMap<>();
 
     private final Map<Long, UserState> userStates = new HashMap<>();
@@ -49,7 +59,7 @@ public class Bot extends TelegramLongPollingBot {
 
     private final Map<Long, Cycle> partialCycleData = new HashMap<>();
 
-    public Bot(String botToken, String botUsername, UserService userService, CycleService cycleService, UserCycleManagementService userCycleManagementService, CalendarService calendarService, DatabaseService databaseService, CycleCalculator cycleCalculator ) {
+    public Bot(String botToken, String botUsername, UserService userService, CycleService cycleService, UserCycleManagementService userCycleManagementService, CalendarService calendarService, DatabaseService databaseService, CycleCalculator cycleCalculator, UserEditService userEditService) {
         this.botToken = botToken;
         this.botUsername = botUsername;
         this.userService = userService;
@@ -58,16 +68,23 @@ public class Bot extends TelegramLongPollingBot {
         this.calendarService = calendarService;
         this.databaseService = databaseService;
         this.cycleCalculator = cycleCalculator;
+        this.userEditService = userEditService;
     }
 
-    @Override
-    public void onUpdateReceived(Update update) {
+
+    private void processUpdate(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
             handleIncomingMessage(update);
         } else if (update.hasCallbackQuery()) {
             handleCallback(update.getCallbackQuery());
         }
     }
+
+    @Override
+    public void onUpdateReceived(Update update) {
+        executorService.submit(() -> processUpdate(update)); // Обработка каждого апдейта в отдельном потоке
+    }
+
 
     private void handleIncomingMessage(Update update) {
         long chatId = update.getMessage().getChatId();
@@ -88,9 +105,9 @@ public class Bot extends TelegramLongPollingBot {
                 newUser.setUsername(update.getMessage().getFrom().getUserName());
                 // Заполнение имени, если оно доступно у пользователя Telegram
                 if (update.getMessage().getFrom().getFirstName() != null) {
-                    newUser.setName(update.getMessage().getFrom().getFirstName());
+                    newUser.setSalutation(update.getMessage().getFrom().getFirstName());
                 } else {
-                    newUser.setName(newUser.getUsername());
+                    newUser.setSalutation(newUser.getUsername());
                 }
                 userService.save(newUser);
             }
@@ -319,8 +336,14 @@ public class Bot extends TelegramLongPollingBot {
 
     private void handleProfileSettings(long chatId) {
         log.info("Функционал настройки профиля запрошен пользователем с chatId {}", chatId);
-        sendMessageWithKeyboard(chatId, "Функционал разрабатывается: Настройка профиля.", createMenuKeyboard());
+
+        // Получаем клавиатуру для настройки профиля
+        InlineKeyboardMarkup keyboard = userEditService.getUserEditor(chatId);
+
+        // Отправляем клавиатуру пользователю
+        sendMessageWithKeyboard(chatId, "Настройки профиля: " , keyboard);
     }
+
 
     private void handleNotificationSettings(long chatId) {
         log.info("Функционал настройки уведомлений запрошен пользователем с chatId {}", chatId);
@@ -399,5 +422,18 @@ public class Bot extends TelegramLongPollingBot {
     @Override
     public String getBotToken() {
         return botToken;
+    }
+
+    @PreDestroy
+    public void shutDown() {
+        log.info("Завершаем работу ExecutorService...");
+        executorService.shutdown();  // Начинаем завершение ExecutorService
+        try {
+            if (!executorService.awaitTermination(60, TimeUnit.SECONDS)) {
+                executorService.shutdownNow();  // Принудительное завершение, если долго завершается
+            }
+        } catch (InterruptedException e) {
+            executorService.shutdownNow();
+        }
     }
 }
