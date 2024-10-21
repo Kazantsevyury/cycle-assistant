@@ -1,3 +1,4 @@
+// UserEditService.java
 package com.example.menstrualcyclebot.service;
 
 import com.example.menstrualcyclebot.domain.User;
@@ -32,7 +33,7 @@ public class UserEditService {
         String salutationText = (user.getSalutation() != null && !user.getSalutation().isEmpty())
                 ? user.getSalutation()
                 : "Ввести обращение";
-        salutationRow.add(createButton(salutationText));
+        salutationRow.add(createButton(salutationText, "edit_salutation"));
 
         keyboard.add(salutationRow);
 
@@ -45,23 +46,34 @@ public class UserEditService {
         String birthDateText = (user.getBirthDate() != null)
                 ? user.getBirthDate().toString()
                 : "Ввести дату рождения";
-        birthDateRow.add(createButton(birthDateText));
+        birthDateRow.add(createButton(birthDateText, "edit_birth_date"));
 
         keyboard.add(birthDateRow);
 
+        // Часовой пояс
+        List<InlineKeyboardButton> timeZoneRow = new ArrayList<>();
+        // "Неактивная" кнопка, которая фактически ничего не делает
+        timeZoneRow.add(createInactiveButton("Временная зона"));
+
+        // Если у пользователя есть часовой пояс, выводим его, иначе предлагаем ввести
+        String timeZoneText = String.valueOf((user.getTimeZone()));
+        timeZoneRow.add(createButton(timeZoneText, "edit_time_zone"));
+
+        keyboard.add(timeZoneRow);
+
         // Кнопка назад
         List<InlineKeyboardButton> backRow = new ArrayList<>();
-        backRow.add(createButton("Назад"));
+        backRow.add(createButton("Назад", "back_to_main_menu"));
 
         keyboard.add(backRow);
         inlineKeyboardMarkup.setKeyboard(keyboard); // Устанавливаем клавиатуру
         return inlineKeyboardMarkup;
     }
 
-    private InlineKeyboardButton createButton(String text) {
+    private InlineKeyboardButton createButton(String text, String callbackData) {
         InlineKeyboardButton button = new InlineKeyboardButton();
         button.setText(text);
-        button.setCallbackData(text); // Используем для обработки кликов
+        button.setCallbackData(callbackData); // Используем для обработки кликов
         return button;
     }
 

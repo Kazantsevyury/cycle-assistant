@@ -4,6 +4,7 @@ import com.example.menstrualcyclebot.presentation.Bot;
 import com.example.menstrualcyclebot.repository.CycleRepository;
 import com.example.menstrualcyclebot.repository.UserRepository;
 import com.example.menstrualcyclebot.service.CalendarService;
+import com.example.menstrualcyclebot.service.StatisticsService;
 import com.example.menstrualcyclebot.service.UserEditService;
 import com.example.menstrualcyclebot.service.sbservices.DatabaseService;
 import com.example.menstrualcyclebot.service.sbservices.CycleService;
@@ -48,8 +49,9 @@ public class BotConfig {
             CalendarService calendarService,
             DatabaseService databaseService,
             CycleCalculator cycleCalculator,
-            UserEditService userEditService) {
-        return new Bot(botToken, botUsername, userService, cycleService, userCycleManagementService, calendarService, databaseService, cycleCalculator, userEditService);
+            UserEditService userEditService,
+            StatisticsService statisticsService) {
+        return new Bot(botToken, botUsername, userService, cycleService, userCycleManagementService, calendarService, databaseService, cycleCalculator, userEditService, statisticsService);
     }
 
     @Bean

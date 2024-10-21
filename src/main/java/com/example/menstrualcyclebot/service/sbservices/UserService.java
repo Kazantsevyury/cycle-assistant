@@ -3,6 +3,7 @@ package com.example.menstrualcyclebot.service.sbservices;
 
 import com.example.menstrualcyclebot.domain.User;
 import com.example.menstrualcyclebot.repository.UserRepository;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +32,16 @@ public class UserService {
     public void save(User user) {
         userRepository.save(user);
     }
+    @Transactional
+    public User updateUser(User updatedUser) {
+        // Опционально проверяем, существует ли пользователь
+        if (!userRepository.existsById(updatedUser.getChatId())) {
+            throw new EntityNotFoundException("Пользователь с ID " + updatedUser.getChatId() + " не найден.");
+        }
+        // Метод save() обновит запись, если она уже существует
+        return userRepository.save(updatedUser);
+    }
+
 
     // Удалить пользователя по ID
     public void deleteById(Long chatId) {

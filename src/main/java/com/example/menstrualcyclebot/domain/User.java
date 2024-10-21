@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 
 @Data
@@ -21,10 +22,10 @@ public class User {
     @Column(name = "setup_complete", nullable = false)
     private boolean setupComplete = false;  // Флаг, указывающий, прошел ли пользователь начальную настройку
 
-    @Column(name = "name", length = 100)
+    @Column(name = "name", length = 50)
     private String name; // Имя пользователя
 
-    @Column(name = "salutation", length = 20)
+    @Column(name = "salutation", length = 50)
     private String salutation; // Обращение к пользователю
 
     @Column(name = "birth_date")
@@ -32,4 +33,7 @@ public class User {
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<Cycle> cycles; // Список циклов, связанных с пользователем
+
+    @Column(name = "time_zone")
+    private ZoneId timeZone;
 }
