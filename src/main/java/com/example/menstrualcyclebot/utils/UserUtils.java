@@ -29,7 +29,6 @@ public class UserUtils {
 
         // Сохраняем московский часовой пояс по умолчанию
         newUser.setTimeZone(DEFAULT_ZONE);
-
         return newUser;
     }
 }

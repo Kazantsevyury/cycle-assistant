@@ -8,6 +8,9 @@ import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -15,8 +18,10 @@ import java.util.Optional;
 @Service
 @AllArgsConstructor
 public class UserEditService {
+
     private final UserService userService;
 
+    // Метод для отображения меню редактирования профиля
     public InlineKeyboardMarkup getUserEditor(long chatId) {
         Optional<User> userOptional = userService.findById(chatId);
         User user = userOptional.orElse(new User()); // Если пользователь не найден, создаем пустого
@@ -68,6 +73,61 @@ public class UserEditService {
         keyboard.add(backRow);
         inlineKeyboardMarkup.setKeyboard(keyboard); // Устанавливаем клавиатуру
         return inlineKeyboardMarkup;
+    }
+
+    // Метод для обновления обращения
+    public void updateSalutation(long chatId, String newSalutation) {
+        Optional<User> userOptional = userService.findById(chatId);
+
+        if (userOptional.isPresent()) {
+            User user = userOptional.get();
+            user.setSalutation(newSalutation);
+
+            try {
+                userService.save(user); // Сохраняем изменения
+            } catch (Exception e) {
+                throw new RuntimeException("Ошибка при сохранении обращения", e);
+            }
+        } else {
+            throw new RuntimeException("Пользователь не найден");
+        }
+    }
+
+    // Метод для обновления даты рождения
+    public void updateBirthdate(long chatId, LocalDate birthDate) {
+        Optional<User> userOptional = userService.findById(chatId);
+
+        if (userOptional.isPresent()) {
+            User user = userOptional.get();
+            user.setBirthDate(birthDate);
+
+            try {
+                userService.save(user); // Сохраняем изменения
+            } catch (Exception e) {
+                throw new RuntimeException("Ошибка при сохранении даты рождения", e);
+            }
+        } else {
+            throw new RuntimeException("Пользователь не найден");
+        }
+    }
+
+    // Метод для обновления часового пояса
+    public void updateTimezone(long chatId, int timezoneOffset) {
+        Optional<User> userOptional = userService.findById(chatId);
+
+        if (userOptional.isPresent()) {
+            User user = userOptional.get();
+            ZoneId zoneId = ZoneId.ofOffset("UTC", ZoneOffset.ofHours(timezoneOffset));
+            user.setTimeZone(zoneId);
+
+            try {
+                userService.save(user); // Сохраняем изменения
+            } catch (Exception e) {
+                throw new RuntimeException("Ошибка при сохранении часового пояса", e);
+            }
+        } else {
+            throw new RuntimeException("Пользователь не найден");
+        }
     }
 
     private InlineKeyboardButton createButton(String text, String callbackData) {
