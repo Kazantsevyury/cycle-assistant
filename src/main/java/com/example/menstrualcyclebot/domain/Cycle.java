@@ -35,7 +35,8 @@ public class Cycle {
 
     private int delayDays; // Количество дней задержки
 
-    private String status; // Статус цикла (ACTIVE, COMPLETED, DELAYED)
+    @Enumerated(EnumType.STRING)            // Храним статус как строку в базе
+    private CycleStatus status;
     private LocalDate expectedEndDate; // Ожидаемая дата завершения цикла
     private boolean isExtended; // Был ли цикл продлён
     private String notes; // Дополнительные заметки

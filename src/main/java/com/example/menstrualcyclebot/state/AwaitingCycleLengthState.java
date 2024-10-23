@@ -18,9 +18,8 @@ public class AwaitingCycleLengthState implements UserStateHandler {
             }
 
             cycle.setCycleLength(cycleLength);
-            bot.sendMessage(chatId, "Данные вашего цикла успешно сохранены!");
+
             bot.changeUserState(chatId, new NoneState());
-            // Здесь можно сохранить цикл в базе данных
         } catch (NumberFormatException e) {
             bot.sendMessage(chatId, "Пожалуйста, введите корректное число.");
         }

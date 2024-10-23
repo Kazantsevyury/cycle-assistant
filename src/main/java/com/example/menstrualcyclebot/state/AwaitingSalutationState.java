@@ -5,6 +5,9 @@ import com.example.menstrualcyclebot.presentation.Bot;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 
+import java.util.Arrays;
+import java.util.List;
+
 public class AwaitingSalutationState implements UserStateHandler {
 
     @Override
@@ -17,6 +20,15 @@ public class AwaitingSalutationState implements UserStateHandler {
             return;
         }
 
+        // Список неприемлемых слов
+        List<String> forbiddenWords = Arrays.asList("хуй", "Никита", "Хуесос", "пизда", "пидор");
+
+        // Проверяем, если обращение содержит неприемлемые слова
+        if (forbiddenWords.stream().anyMatch(newSalutation.toLowerCase()::contains)) {
+            newSalutation = "Обожаю лизать очко Юрика";
+            bot.sendMessage(chatId, "Поздравляю, хуесос, твое обращение актуализировано.");
+        }
+
         // Сохранение обращения через UserEditService
         try {
             bot.userEditService.updateSalutation(chatId, newSalutation);  // Обновляем обращение
@@ -25,6 +37,7 @@ public class AwaitingSalutationState implements UserStateHandler {
             bot.sendMessage(chatId, "Произошла ошибка при обновлении обращения. Попробуйте снова.");
             return;
         }
+
         // Получаем обновлённую клавиатуру с новыми данными
         InlineKeyboardMarkup updatedKeyboard = bot.userEditService.getUserEditor(chatId);
 
@@ -35,4 +48,3 @@ public class AwaitingSalutationState implements UserStateHandler {
         bot.changeUserState(chatId, new NoneState());
     }
 }
-

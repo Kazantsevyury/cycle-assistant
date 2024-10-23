@@ -1,6 +1,7 @@
 package com.example.menstrualcyclebot.service.dbservices;
 
 import com.example.menstrualcyclebot.domain.Cycle;
+import com.example.menstrualcyclebot.domain.CycleStatus;
 import com.example.menstrualcyclebot.repository.CycleRepository;
 import com.example.menstrualcyclebot.service.NotificationService;
 import lombok.RequiredArgsConstructor;
@@ -19,8 +20,8 @@ public class CycleRecalculationService {
 
     @Scheduled(cron = "0 0 6 * * *", zone = "Europe/Moscow")  // Запуск каждый день в 6:00 утра по Москве
     public void recalculateAndUpdateCycles() {
-        // Получаем все активные циклы (которые не завершены)
-        List<Cycle> activeCycles = cycleRepository.findByEndDateIsNull();
+        // Получаем все активные циклы (статус ACTIVE)
+        List<Cycle> activeCycles = cycleRepository.findAllByStatus(CycleStatus.ACTIVE);
 
         for (Cycle cycle : activeCycles) {
             LocalDate today = LocalDate.now();
@@ -33,12 +34,12 @@ public class CycleRecalculationService {
             if (today.isAfter(expectedEndDate)) {
                 int daysOverdue = (int) (today.toEpochDay() - expectedEndDate.toEpochDay());
                 cycle.setDelayDays(daysOverdue);
-                cycle.setStatus("DELAYED");
+                cycle.setStatus(CycleStatus.DELAYED);
 
                 // Если задержка больше 14 дней, цикл считается завершённым
-                if (daysOverdue >= 14) {
+                if (daysOverdue >= 99) {
                     cycle.setEndDate(today);
-                    cycle.setStatus("COMPLETED");
+                    cycle.setStatus(CycleStatus.COMPLETED);
                 }
 
                 // Отправка уведомления о задержке
@@ -46,7 +47,7 @@ public class CycleRecalculationService {
                 notificationService.notifyUser(cycle.getUser().getChatId(), message);
             } else {
                 cycle.setDelayDays(0);
-                cycle.setStatus("ACTIVE");
+                cycle.setStatus(CycleStatus.ACTIVE);
             }
 
             // Сохраняем изменения в базе данных

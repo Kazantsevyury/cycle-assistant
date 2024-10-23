@@ -1,10 +1,12 @@
 package com.example.menstrualcyclebot.service.dbservices;
 
 import com.example.menstrualcyclebot.domain.Cycle;
+import com.example.menstrualcyclebot.domain.CycleStatus;
 import com.example.menstrualcyclebot.repository.CycleRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,10 +24,6 @@ public class CycleService {
         return cycleRepository.findById(cycleId);
     }
 
-    // Найти все активные циклы, у которых endDate равен null
-    public List<Cycle> findAllActiveCycles() {
-        return cycleRepository.findByEndDateIsNull();
-    }
     // Найти все циклы
     public List<Cycle> findAll() {
         return cycleRepository.findAll();
@@ -49,6 +47,9 @@ public class CycleService {
             throw new IllegalArgumentException("Менструальный цикл с ID " + cycle.getCycleId() + " не найден");
         }
     }
+    public Optional<Cycle> findActiveCycleByChatId(long chatId) {
+        return cycleRepository.findFirstByUser_ChatIdAndStatus(chatId, CycleStatus.ACTIVE);
+    }
 
     public Cycle getActualCycle(List<Cycle> cycles) {
         // Получаем текущую дату
@@ -63,6 +64,11 @@ public class CycleService {
 
         // Если ни один актуальный цикл не найден, выбрасываем исключение
         throw new IllegalArgumentException("У пользователя нет актуальных циклов.");
+    }
+    public Optional<Cycle> findActiveOrDelayedCycleByChatId(Long chatId) {
+        // Ищем цикл со статусом ACTIVE или DELAYED
+        return cycleRepository.findFirstByUser_ChatIdAndStatusIn(
+                chatId, Arrays.asList(CycleStatus.ACTIVE, CycleStatus.DELAYED));
     }
 }
 
