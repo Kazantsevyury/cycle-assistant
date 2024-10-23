@@ -48,7 +48,7 @@ public class Bot extends TelegramLongPollingBot {
     private final CalendarService calendarService;
     private final DatabaseService databaseService;
     private final CycleCalculator cycleCalculator;
-    private final UserEditService userEditService;
+    public final UserEditService userEditService;
     private final StatisticsService statisticsService;
 
     private final ExecutorService executorService = Executors.newFixedThreadPool(10); // Настрой количество потоков
