@@ -31,5 +31,12 @@ public class Cycle {
 
     private LocalDate lutealPhaseStart;     // Дата начала лютеиновой фазы
     private LocalDate lutealPhaseEnd;       // Дата окончания лютеиновой фазы (до конца цикла)
-    private LocalDate endDate;
+    private LocalDate endDate; // Дата завершения цикла, если он завершён
+
+    private int delayDays; // Количество дней задержки
+
+    private String status; // Статус цикла (ACTIVE, COMPLETED, DELAYED)
+    private LocalDate expectedEndDate; // Ожидаемая дата завершения цикла
+    private boolean isExtended; // Был ли цикл продлён
+    private String notes; // Дополнительные заметки
 }

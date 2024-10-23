@@ -2,7 +2,7 @@
 package com.example.menstrualcyclebot.service;
 
 import com.example.menstrualcyclebot.domain.User;
-import com.example.menstrualcyclebot.service.sbservices.UserService;
+import com.example.menstrualcyclebot.service.dbservices.UserService;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;

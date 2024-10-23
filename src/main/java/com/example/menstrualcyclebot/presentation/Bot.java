@@ -5,10 +5,7 @@ import com.example.menstrualcyclebot.domain.User;
 import com.example.menstrualcyclebot.service.CalendarService;
 import com.example.menstrualcyclebot.service.StatisticsService;
 import com.example.menstrualcyclebot.service.UserEditService;
-import com.example.menstrualcyclebot.service.sbservices.CycleService;
-import com.example.menstrualcyclebot.service.sbservices.DatabaseService;
-import com.example.menstrualcyclebot.service.sbservices.UserCycleManagementService;
-import com.example.menstrualcyclebot.service.sbservices.UserService;
+import com.example.menstrualcyclebot.service.dbservices.*;
 import com.example.menstrualcyclebot.state.*;
 import com.example.menstrualcyclebot.utils.CycleCalculator;
 import com.example.menstrualcyclebot.utils.UserUtils;
@@ -17,10 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
-import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
-import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
@@ -47,6 +41,8 @@ public class Bot extends TelegramLongPollingBot {
     private final CycleCalculator cycleCalculator;
     public final UserEditService userEditService;
     private final StatisticsService statisticsService;
+    private final CycleRecalculationService cycleRecalculationService; // Добавляем пересчёт циклов
+
 
     private final ExecutorService executorService = Executors.newFixedThreadPool(10); // Настрой количество потоков
 
@@ -77,7 +73,7 @@ public class Bot extends TelegramLongPollingBot {
             DatabaseService databaseService,
             CycleCalculator cycleCalculator,
             UserEditService userEditService,
-            StatisticsService statisticsService) {
+            StatisticsService statisticsService, CycleRecalculationService cycleRecalculationService) {
         this.botToken = botToken;
         this.botUsername = botUsername;
         this.userService = userService;
@@ -88,6 +84,7 @@ public class Bot extends TelegramLongPollingBot {
         this.cycleCalculator = cycleCalculator;
         this.userEditService = userEditService;
         this.statisticsService = statisticsService;
+        this.cycleRecalculationService = cycleRecalculationService;
     }
 
     /**
@@ -129,9 +126,23 @@ public class Bot extends TelegramLongPollingBot {
             if (currentState != null && !(currentState instanceof NoneState)) {
                 Cycle cycle = partialCycleData.getOrDefault(chatId, new Cycle());
                 currentState.handleState(this, update, cycle);
+
+                // Проверка, если все данные для цикла введены
+                if (cycle.getStartDate() != null && cycle.getCycleLength() != 0 && cycle.getPeriodLength() != 0) {
+                    User user = userService.findById(chatId).orElseThrow(() -> new IllegalArgumentException("User not found"));
+                    cycle.setUser(user); // Привязываем цикл к пользователю
+                    CycleCalculator.calculateCycleFields(cycle);
+
+                    cycleService.save(cycle); // Сохранение в базу данных
+                    partialCycleData.remove(chatId); // Удаление временных данных о цикле
+
+                    sendMessage(chatId, "Ваш цикл успешно сохранен!");
+                }
+
                 partialCycleData.put(chatId, cycle);
                 return;
             }
+
             String salutation = getUserSalutation(chatId);
 
                 // Обработка команд
@@ -153,6 +164,9 @@ public class Bot extends TelegramLongPollingBot {
                         handleProfileSettings(chatId);
                         break;
 
+                    case "r":
+                        handleRecalculationCommand(chatId);
+                        break;
                     case "📆 Календарь":
                         handleCalendar(chatId);
                         break;
@@ -289,6 +303,18 @@ public class Bot extends TelegramLongPollingBot {
             sendMessageWithKeyboard(chatId, "Выберите опцию ниже:", createMenuKeyboard());
         } catch (Exception e) {
             sendMessage(chatId, "Произошла ошибка при удалении базы данных. Попробуйте снова позже.");
+        }
+    }
+
+    /**
+     * Обрабатывает команду пересчёта циклов
+     */
+    private void handleRecalculationCommand(long chatId) {
+        try {
+            cycleRecalculationService.recalculateAndUpdateCycles(); // Запуск пересчёта циклов
+            sendMessage(chatId, "Пересчёт циклов успешно выполнен.");
+        } catch (Exception e) {
+            sendMessage(chatId, "Ошибка при пересчёте циклов: " + e.getMessage());
         }
     }
 

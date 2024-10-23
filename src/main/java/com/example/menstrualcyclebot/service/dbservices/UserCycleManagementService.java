@@ -1,13 +1,11 @@
-package com.example.menstrualcyclebot.service.sbservices;
+package com.example.menstrualcyclebot.service.dbservices;
 
 import com.example.menstrualcyclebot.domain.Cycle;
 import com.example.menstrualcyclebot.domain.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 

@@ -1,4 +1,4 @@
-package com.example.menstrualcyclebot.service.sbservices;
+package com.example.menstrualcyclebot.service.dbservices;
 
 import com.example.menstrualcyclebot.domain.Cycle;
 import com.example.menstrualcyclebot.repository.CycleRepository;
@@ -22,6 +22,10 @@ public class CycleService {
         return cycleRepository.findById(cycleId);
     }
 
+    // Найти все активные циклы, у которых endDate равен null
+    public List<Cycle> findAllActiveCycles() {
+        return cycleRepository.findByEndDateIsNull();
+    }
     // Найти все циклы
     public List<Cycle> findAll() {
         return cycleRepository.findAll();

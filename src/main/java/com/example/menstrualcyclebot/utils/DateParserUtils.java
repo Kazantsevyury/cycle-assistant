@@ -35,6 +35,11 @@ public class DateParserUtils {
         formatters.add(DateTimeFormatter.ofPattern("d.M.yyyy"));
         formatters.add(DateTimeFormatter.ofPattern("dd.M.yyyy"));
 
+        formatters.add(DateTimeFormatter.ofPattern("dd,MM,yyyy"));
+        formatters.add(DateTimeFormatter.ofPattern("d,MM,yyyy"));
+        formatters.add(DateTimeFormatter.ofPattern("d,M,yyyy"));
+        formatters.add(DateTimeFormatter.ofPattern("dd,M,yyyy"));
+
         formatters.add(DateTimeFormatter.ofPattern("yyyy.MM.d"));
         formatters.add(DateTimeFormatter.ofPattern("yyyy.MM.dd"));
         formatters.add(DateTimeFormatter.ofPattern("yyyy.M.d"));

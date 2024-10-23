@@ -1,4 +1,4 @@
-package com.example.menstrualcyclebot.service.sbservices;
+package com.example.menstrualcyclebot.service.dbservices;
 
 
 import com.example.menstrualcyclebot.domain.User;

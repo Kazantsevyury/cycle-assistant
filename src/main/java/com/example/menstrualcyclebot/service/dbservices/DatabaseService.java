@@ -1,4 +1,4 @@
-package com.example.menstrualcyclebot.service.sbservices;
+package com.example.menstrualcyclebot.service.dbservices;
 
 import com.example.menstrualcyclebot.repository.CycleRepository;
 import com.example.menstrualcyclebot.repository.UserRepository;

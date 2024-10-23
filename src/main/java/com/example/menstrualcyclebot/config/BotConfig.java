@@ -4,12 +4,10 @@ import com.example.menstrualcyclebot.presentation.Bot;
 import com.example.menstrualcyclebot.repository.CycleRepository;
 import com.example.menstrualcyclebot.repository.UserRepository;
 import com.example.menstrualcyclebot.service.CalendarService;
+import com.example.menstrualcyclebot.service.NotificationService;
 import com.example.menstrualcyclebot.service.StatisticsService;
 import com.example.menstrualcyclebot.service.UserEditService;
-import com.example.menstrualcyclebot.service.sbservices.DatabaseService;
-import com.example.menstrualcyclebot.service.sbservices.CycleService;
-import com.example.menstrualcyclebot.service.sbservices.UserCycleManagementService;
-import com.example.menstrualcyclebot.service.sbservices.UserService;
+import com.example.menstrualcyclebot.service.dbservices.*;
 import com.example.menstrualcyclebot.utils.CycleCalculator;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -50,8 +48,9 @@ public class BotConfig {
             DatabaseService databaseService,
             CycleCalculator cycleCalculator,
             UserEditService userEditService,
-            StatisticsService statisticsService) {
-        return new Bot(botToken, botUsername, userService, cycleService, userCycleManagementService, calendarService, databaseService, cycleCalculator, userEditService, statisticsService);
+            StatisticsService statisticsService,
+            CycleRecalculationService cycleRecalculationService) {
+        return new Bot(botToken, botUsername, userService, cycleService, userCycleManagementService, calendarService, databaseService, cycleCalculator, userEditService, statisticsService,cycleRecalculationService);
     }
 
     @Bean
@@ -67,5 +66,15 @@ public class BotConfig {
     @Bean
     public UserCycleManagementService userCycleManagementService(UserService userService, CycleService cycleService) {
         return new UserCycleManagementService(userService, cycleService);
+    }
+    @Bean
+    public CycleRecalculationService cycleRecalculationService(CycleRepository cycleRepository, NotificationService notificationService ) {
+        return new CycleRecalculationService(cycleRepository, notificationService);
+    }
+
+    // Создаём бин для NotificationService
+    @Bean
+    public NotificationService notificationService() {
+        return new NotificationService();
     }
 }
