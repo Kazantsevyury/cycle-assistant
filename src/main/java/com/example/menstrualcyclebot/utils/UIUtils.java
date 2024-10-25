@@ -29,14 +29,12 @@ public class UIUtils {
         row3.add(new KeyboardButton("🔄 Новый цикл"));
         row3.add(new KeyboardButton("✍️ Ввести данные"));
 
-        KeyboardRow row4 = new KeyboardRow();
-        row4.add(new KeyboardButton("Удалить базу"));
+
 
         keyboard.add(row1);
 
         keyboard.add(row2);
         keyboard.add(row3);
-        keyboard.add(row4);
 
         keyboardMarkup.setKeyboard(keyboard);
         keyboardMarkup.setResizeKeyboard(true); // Автоматически подгоняет размер кнопок под экран пользователя

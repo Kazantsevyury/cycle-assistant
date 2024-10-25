@@ -176,7 +176,7 @@ public class Bot extends TelegramLongPollingBot {
                         handleCurrentDay(chatId);
                         break;
 
-                    case "Удалить базу":
+                    case "d":
                         deleteAllData(chatId);
                         break;
 
@@ -221,22 +221,26 @@ public class Bot extends TelegramLongPollingBot {
         // Получаем текущий активный или задержанный цикл
         Optional<Cycle> optionalCurrentCycle = cycleService.findActiveOrDelayedCycleByChatId(chatId);
 
-        Cycle currentCycle = null; // Объявляем переменную currentCycle
+        Cycle currentCycle = null;
 
         if (optionalCurrentCycle.isPresent()) {
             currentCycle = optionalCurrentCycle.get();
+            int originalCycleLength = currentCycle.getCycleLength(); // Перемещаем объявление сюда
+
             // Завершаем текущий цикл
             currentCycle.setStatus(CycleStatus.COMPLETED);
             currentCycle.setEndDate(LocalDate.now());
-            cycleService.save(currentCycle); // Сохраняем изменения
-        }
 
-        if (currentCycle != null) {
-            // Создаем новый цикл на основе данных предыдущего
+            // Пересчитываем только длину цикла и лютеиновую фазу
+            cycleCalculator.recalculateCycleFieldsBasedOnEndDate(currentCycle);
+
+            cycleService.save(currentCycle); // Сохраняем изменения
+
+            // Создаем новый цикл на основе данных предыдущего, с оригинальной длиной
             Cycle newCycle = new Cycle();
             newCycle.setUser(currentCycle.getUser());
-            newCycle.setStartDate(LocalDate.now()); // Устанавливаем новую дату начала
-            newCycle.setCycleLength(currentCycle.getCycleLength());
+            newCycle.setStartDate(LocalDate.now());
+            newCycle.setCycleLength(originalCycleLength); // Используем исходную длину цикла
             newCycle.setPeriodLength(currentCycle.getPeriodLength());
 
             // Устанавливаем статус нового цикла
@@ -254,6 +258,9 @@ public class Bot extends TelegramLongPollingBot {
             sendMessage(chatId, "Не найден активный или задержанный цикл для создания нового.");
         }
     }
+
+
+
 
     public void handleCurrentDay(long chatId) {
         try {

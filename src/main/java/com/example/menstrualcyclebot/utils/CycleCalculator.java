@@ -1,10 +1,14 @@
 package com.example.menstrualcyclebot.utils;
 
 import com.example.menstrualcyclebot.domain.Cycle;
-import org.springframework.context.annotation.Bean;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.Map;
 
 @Component
 public class CycleCalculator {
@@ -51,4 +55,19 @@ public class CycleCalculator {
         LocalDate endDate = startDate.plusDays(D - 1);
         cycle.setEndDate(endDate);  // Устанавливаем конец цикла
     }
+
+    public static void recalculateCycleFieldsBasedOnEndDate(Cycle cycle) {
+        LocalDate startDate = cycle.getStartDate();
+        LocalDate endDate = cycle.getEndDate();
+
+        // 1. Перерасчет длины цикла на основе фактической даты завершения
+        int recalculatedCycleLength = (int) (endDate.toEpochDay() - startDate.toEpochDay()) + 1;
+        cycle.setCycleLength(recalculatedCycleLength);
+
+        // 2. Лютеиновая фаза
+        // Начинается на второй день после окончания овуляции
+        LocalDate lutealPhaseEnd = endDate;
+        cycle.setLutealPhaseEnd(lutealPhaseEnd);  // Устанавливаем конец лютеиновой фазы
+    }
+
 }
