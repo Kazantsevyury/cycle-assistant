@@ -44,6 +44,7 @@ public class UserService {
 
 
     // Удалить пользователя по ID
+    @Transactional
     public void deleteById(Long chatId) {
         userRepository.deleteById(chatId);
     }

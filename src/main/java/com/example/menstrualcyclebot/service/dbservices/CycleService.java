@@ -4,6 +4,7 @@ import com.example.menstrualcyclebot.domain.Cycle;
 import com.example.menstrualcyclebot.domain.CycleStatus;
 import com.example.menstrualcyclebot.repository.CycleRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.Arrays;
@@ -20,16 +21,19 @@ public class CycleService {
     }
 
     // Найти цикл по ID
+    @Transactional
     public Optional<Cycle> findById(Long cycleId) {
         return cycleRepository.findById(cycleId);
     }
 
     // Найти все циклы
+    @Transactional
     public List<Cycle> findAll() {
         return cycleRepository.findAll();
     }
 
     // Сохранить цикл
+    @Transactional
     public Cycle save(Cycle cycle) {
         return cycleRepository.save(cycle);
     }
@@ -69,6 +73,10 @@ public class CycleService {
         // Ищем цикл со статусом ACTIVE или DELAYED
         return cycleRepository.findFirstByUser_ChatIdAndStatusIn(
                 chatId, Arrays.asList(CycleStatus.ACTIVE, CycleStatus.DELAYED));
+    }
+    @Transactional
+    public void deleteCycleById(Long cycleId) {
+        cycleRepository.deleteByCycleId(cycleId);
     }
 }
 

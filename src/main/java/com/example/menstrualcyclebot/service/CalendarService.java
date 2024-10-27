@@ -106,8 +106,8 @@ public class CalendarService {
             }
 
             // Проверка на овуляцию
-            LocalDate ovulationStartDate = cycle.getStartDate().plusDays(cycle.getOvulationStartDay() - 1); // Дата начала овуляции
-            LocalDate ovulationEndDate = cycle.getStartDate().plusDays(cycle.getOvulationEndDay() - 1); // Дата окончания овуляции
+            LocalDate ovulationStartDate = cycle.getStartDate().plusDays(cycle.getFertileWindowStartDay() - 1); // Дата начала овуляции
+            LocalDate ovulationEndDate = cycle.getStartDate().plusDays(cycle.getFertileWindowEndDay() - 1); // Дата окончания овуляции
             if (!date.isBefore(ovulationStartDate) && !date.isAfter(ovulationEndDate)) {
                 return " 💋"; // Овуляция
             }

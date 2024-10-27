@@ -14,4 +14,6 @@ public interface CycleRepository extends JpaRepository<Cycle, Long> {
     Optional<Cycle> findFirstByUser_ChatIdAndStatus(long chatId, CycleStatus status);
     Optional<Cycle> findFirstByUser_ChatIdAndStatusIn(Long chatId, List<CycleStatus> statuses);
 
+    void deleteByCycleId(Long cycleId);
+
 }
