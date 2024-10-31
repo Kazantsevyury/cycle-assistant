@@ -4,6 +4,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMar
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -41,5 +42,95 @@ public class UIUtils {
         keyboardMarkup.setOneTimeKeyboard(false); // Меню будет оставаться после использования
         return keyboardMarkup;
     }
+    // Меню для исторического ввода данных
+    public static ReplyKeyboardMarkup createHistoricalDataKeyboard() {
+        ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
+        keyboardMarkup.setResizeKeyboard(true);
+        keyboardMarkup.setOneTimeKeyboard(false);
+        List<KeyboardRow> keyboard = new ArrayList<>();
+
+        KeyboardRow row = new KeyboardRow();
+        row.add(new KeyboardButton("✍️ Ввести исторические данные"));
+        row.add(new KeyboardButton("Завершить ввод исторических данных"));
+        keyboard.add(row);
+
+        keyboardMarkup.setKeyboard(keyboard);
+        keyboardMarkup.setResizeKeyboard(true);
+        keyboardMarkup.setOneTimeKeyboard(false);
+        return keyboardMarkup;
+    }
+    public static ReplyKeyboardMarkup createDataEntryChoiceKeyboard() {
+        ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
+        keyboardMarkup.setResizeKeyboard(true);
+        keyboardMarkup.setOneTimeKeyboard(false);
+        List<KeyboardRow> keyboard = new ArrayList<>();
+
+        KeyboardRow row = new KeyboardRow();
+        row.add(new KeyboardButton("Ввести данные актуального цикла"));
+        row.add(new KeyboardButton("✍️ Ввести исторические данные"));
+        row.add(new KeyboardButton("Назад"));
+
+        keyboard.add(row);
+        keyboardMarkup.setKeyboard(keyboard);
+        keyboardMarkup.setResizeKeyboard(true);
+        keyboardMarkup.setOneTimeKeyboard(false);
+
+        return keyboardMarkup;
+    }
+
+    public static ReplyKeyboardMarkup createCycleDatesKeyboard() {
+        ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
+        keyboardMarkup.setResizeKeyboard(true);
+        keyboardMarkup.setOneTimeKeyboard(false);
+        List<KeyboardRow> keyboard = new ArrayList<>();
+
+        KeyboardRow row = new KeyboardRow();
+        row.add(new KeyboardButton("Ввести еще один цикл"));
+        row.add(new KeyboardButton("Закончить ввод данных"));
+        row.add(new KeyboardButton("Удалить один из введенных циклов"));
+
+        keyboard.add(row);
+        keyboardMarkup.setKeyboard(keyboard);
+        keyboardMarkup.setResizeKeyboard(true);
+        keyboardMarkup.setOneTimeKeyboard(false);
+
+        return keyboardMarkup;
+    }
+
+    public static ReplyKeyboardMarkup createCycleDatesDel(List<LocalDate> endDates) {
+        ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
+        keyboardMarkup.setResizeKeyboard(true);
+        keyboardMarkup.setOneTimeKeyboard(false);
+        List<KeyboardRow> keyboard = new ArrayList<>();
+
+        KeyboardRow row = new KeyboardRow();
+        row.add(new KeyboardButton("Удалить цикл"));
+        row.add(new KeyboardButton("В главное меню"));
+
+        keyboard.add(row);
+        keyboardMarkup.setKeyboard(keyboard);
+        keyboardMarkup.setResizeKeyboard(true);
+        keyboardMarkup.setOneTimeKeyboard(false);
+
+        return keyboardMarkup;
+    }
+    public static ReplyKeyboardMarkup createDeleteCycleConfirmationKeyboard() {
+        ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
+        keyboardMarkup.setResizeKeyboard(true);
+        keyboardMarkup.setOneTimeKeyboard(false);
+        List<KeyboardRow> keyboard = new ArrayList<>();
+
+        KeyboardRow row = new KeyboardRow();
+        row.add(new KeyboardButton("Да, удалить текущий цикл"));
+        row.add(new KeyboardButton("Назад"));
+
+        keyboard.add(row);
+        keyboardMarkup.setKeyboard(keyboard);
+        keyboardMarkup.setResizeKeyboard(true);
+        keyboardMarkup.setOneTimeKeyboard(false);
+
+        return keyboardMarkup;
+    }
+
 
 }

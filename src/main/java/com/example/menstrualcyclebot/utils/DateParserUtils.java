@@ -3,7 +3,6 @@ package com.example.menstrualcyclebot.utils;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
 import java.util.List;
 
 public class DateParserUtils {
@@ -28,30 +27,26 @@ public class DateParserUtils {
                     currentDate.getYear());
         }
 
-        // Создаем список поддерживаемых форматов
-        List<DateTimeFormatter> formatters = new ArrayList<>();
-        formatters.add(DateTimeFormatter.ofPattern("dd.MM.yyyy"));
-        formatters.add(DateTimeFormatter.ofPattern("d.MM.yyyy"));
-        formatters.add(DateTimeFormatter.ofPattern("d.M.yyyy"));
-        formatters.add(DateTimeFormatter.ofPattern("dd.M.yyyy"));
-
-        formatters.add(DateTimeFormatter.ofPattern("dd,MM,yyyy"));
-        formatters.add(DateTimeFormatter.ofPattern("d,MM,yyyy"));
-        formatters.add(DateTimeFormatter.ofPattern("d,M,yyyy"));
-        formatters.add(DateTimeFormatter.ofPattern("dd,M,yyyy"));
-
-        formatters.add(DateTimeFormatter.ofPattern("yyyy.MM.d"));
-        formatters.add(DateTimeFormatter.ofPattern("yyyy.MM.dd"));
-        formatters.add(DateTimeFormatter.ofPattern("yyyy.M.d"));
-
-        formatters.add(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-        formatters.add(DateTimeFormatter.ofPattern("yyyy-MM-d"));
-        formatters.add(DateTimeFormatter.ofPattern("yyyy-M-d"));
-        formatters.add(DateTimeFormatter.ofPattern("yyyy-MM-d"));
-
-        formatters.add(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
-        formatters.add(DateTimeFormatter.ofPattern("d-MM-yyyy"));
-        formatters.add(DateTimeFormatter.ofPattern("d-M-yyyy"));
+        // Список поддерживаемых форматов
+        List<DateTimeFormatter> formatters = List.of(
+                DateTimeFormatter.ofPattern("dd.MM.yyyy"),
+                DateTimeFormatter.ofPattern("d.MM.yyyy"),
+                DateTimeFormatter.ofPattern("d.M.yyyy"),
+                DateTimeFormatter.ofPattern("dd.M.yyyy"),
+                DateTimeFormatter.ofPattern("dd,MM,yyyy"),
+                DateTimeFormatter.ofPattern("d,MM,yyyy"),
+                DateTimeFormatter.ofPattern("d,M,yyyy"),
+                DateTimeFormatter.ofPattern("dd,M,yyyy"),
+                DateTimeFormatter.ofPattern("yyyy.MM.d"),
+                DateTimeFormatter.ofPattern("yyyy.MM.dd"),
+                DateTimeFormatter.ofPattern("yyyy.M.d"),
+                DateTimeFormatter.ofPattern("yyyy-MM-dd"),
+                DateTimeFormatter.ofPattern("yyyy-MM-d"),
+                DateTimeFormatter.ofPattern("yyyy-M-d"),
+                DateTimeFormatter.ofPattern("dd-MM-yyyy"),
+                DateTimeFormatter.ofPattern("d-MM-yyyy"),
+                DateTimeFormatter.ofPattern("d-M-yyyy")
+        );
 
         // Пробуем каждый формат
         for (DateTimeFormatter formatter : formatters) {

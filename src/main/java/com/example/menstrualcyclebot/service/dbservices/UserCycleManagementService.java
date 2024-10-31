@@ -1,6 +1,7 @@
 package com.example.menstrualcyclebot.service.dbservices;
 
 import com.example.menstrualcyclebot.domain.Cycle;
+import com.example.menstrualcyclebot.domain.CycleStatus;
 import com.example.menstrualcyclebot.domain.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -8,6 +9,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
@@ -34,21 +36,33 @@ public class UserCycleManagementService {
         }
 
         // Пытаемся получить актуальный цикл
-        Cycle actualCycle = cycleService.getActualCycle(cycles);
-
-        if (actualCycle == null) {
+        Cycle actualCycle;
+        try {
+            actualCycle = cycleService.getActualCycle(cycles);
+        } catch (IllegalArgumentException e) {
+            // Если нет активного цикла, выбрасываем исключение
             throw new IllegalArgumentException("Нет активного цикла. Пожалуйста, начните новый цикл.");
         }
 
         // Вычисляем текущий день цикла
         LocalDate today = LocalDate.now();
-        int currentDay = (int) (today.toEpochDay() - actualCycle.getStartDate().toEpochDay()) + 1;
-
-        // Проверка корректности текущего дня
-        if (currentDay < 1) {
-            throw new IllegalArgumentException("Некорректная дата начала цикла. Пожалуйста, проверьте ваши данные.");
+        if (today.isBefore(actualCycle.getStartDate())) {
+            throw new IllegalArgumentException("Дата начала цикла в будущем. Проверьте ваши данные.");
         }
+
+        int currentDay = (int) (today.toEpochDay() - actualCycle.getStartDate().toEpochDay()) + 1;
 
         return currentDay;
     }
+
+
+    // Получение последних завершенных циклов по chatId с ограничением
+    public List<LocalDate> findLastCompletedCycleEndDatesByChatId(long chatId, int limit) {
+        List<Cycle> completedCycles = cycleService.findCompletedCyclesByChatId(chatId);
+        return completedCycles.stream()
+                .map(Cycle::getEndDate)
+                .limit(limit)
+                .collect(Collectors.toList());
+    }
+
 }

@@ -1,6 +1,7 @@
 package com.example.menstrualcyclebot.service.dbservices;
 
 
+import com.example.menstrualcyclebot.domain.Cycle;
 import com.example.menstrualcyclebot.domain.User;
 import com.example.menstrualcyclebot.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -23,11 +24,15 @@ public class UserService {
     public Optional<User> findById(Long chatId) {
         return userRepository.findById(chatId);
     }
-
     public List<User> findAll() {
         return userRepository.findAll();
     }
-
+    @Transactional(readOnly = true)
+    public List<Cycle> findUserCyclesByChatId(Long chatId) {
+        User user = userRepository.findByChatId(chatId)
+                .orElseThrow(() -> new EntityNotFoundException("Пользователь с ID " + chatId + " не найден."));
+        return user.getCycles();
+    }
     @Transactional
     public void save(User user) {
         userRepository.save(user);

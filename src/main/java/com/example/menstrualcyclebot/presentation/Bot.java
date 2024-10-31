@@ -11,6 +11,7 @@ import com.example.menstrualcyclebot.state.*;
 import com.example.menstrualcyclebot.utils.CycleCalculator;
 import com.example.menstrualcyclebot.utils.UserUtils;
 import jakarta.annotation.PreDestroy;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -25,13 +26,13 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.time.LocalDate;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
-import static com.example.menstrualcyclebot.utils.UIUtils.createMenuKeyboard;
+import static com.example.menstrualcyclebot.utils.UIUtils.*;
+
 @Slf4j
 @Component
+@Data
 public class Bot extends TelegramLongPollingBot {
 
     private final String botToken;
@@ -46,9 +47,6 @@ public class Bot extends TelegramLongPollingBot {
     public final UserEditService userEditService;
     private final StatisticsService statisticsService;
     private final CycleRecalculationService cycleRecalculationService; // Добавляем пересчёт циклов
-
-
-    private final ExecutorService executorService = Executors.newFixedThreadPool(10); // Настрой количество потоков
 
     private final Map<Long, UserStateHandler> userStates = new HashMap<>();
     private final Map<Long, Cycle> partialCycleData = new HashMap<>();
@@ -92,6 +90,16 @@ public class Bot extends TelegramLongPollingBot {
     }
 
     /**
+     * Метод, вызываемый при получении обновления от Telegram API.
+     *
+     * @param update Объект обновления от пользователя.
+     */
+    @Override
+    public void onUpdateReceived(Update update) {
+        processUpdate(update); // Обработка обновления в основном потоке
+    }
+
+    /**
      * Обрабатывает входящее обновление от пользователя.
      *
      * @param update Объект обновления, содержащий информацию от пользователя.
@@ -104,17 +112,6 @@ public class Bot extends TelegramLongPollingBot {
         }
     }
 
-    /**
-     * Метод, вызываемый при получении обновления от Telegram API.
-     * Запускает обработку каждого обновления в отдельном потоке.
-     *
-     * @param update Объект обновления от пользователя.
-     */
-    @Override
-    public void onUpdateReceived(Update update) {
-        executorService.submit(() -> processUpdate(update)); // Обработка каждого апдейта в отдельном потоке
-    }
-
     public void handleIncomingMessage(Update update) {
         long chatId = update.getMessage().getChatId();
         String messageText = update.getMessage().getText();
@@ -122,75 +119,93 @@ public class Bot extends TelegramLongPollingBot {
         log.debug("Handling incoming message '{}' from chatId {}", messageText, chatId);
 
         try {
-            // Проверка всех команд основного меню и сброс временных данных и состояния
-            if (messageText.equals("/start") || messageText.equals("✍️ Ввести данные") || messageText.equals("👤 Настройка профиля") ||
-                    messageText.equals("🔄 Новый цикл") || messageText.equals("r") || messageText.equals("📆 Календарь") ||
-                    messageText.equals("📅 Текущий день цикла") || messageText.equals("Удалить базу")) {
-
-                // Сбрасываем временные данные
+            if (isMainCommand(messageText)) {
                 partialCycleData.remove(chatId);
                 log.info("Cleared temporary data for chatId {}", chatId);
-
-                // Сбрасываем состояние
-                changeUserState(chatId, new NoneState());
+                userStates.put(chatId, new NoneState());
                 log.info("Reset user state to NoneState for chatId {}", chatId);
 
                 // Обрабатываем команды
                 switch (messageText) {
                     case "/start":
-                        if (!userService.existsById(chatId)) {
-                            User newUser = UserUtils.createNewUser(update);
-                            userService.save(newUser);
-                            log.info("New user created and saved for chatId {}", chatId);
-                        }
-                        sendMessageWithKeyboard(chatId, "Добро пожаловать! Выберите команду для начала.", createMenuKeyboard());
+                        handleStartCommand(chatId, update);
                         break;
-
                     case "✍️ Ввести данные":
-                        Optional<Cycle> activeCycle = cycleService.findActiveOrDelayedCycleByChatId(chatId);
-                        if (activeCycle.isPresent()) {
-                            Cycle existingCycle = activeCycle.get();
-                            String cycleInfo = String.format(
-                                    "У вас уже есть активный или задержанный цикл:\nНачало цикла: %s\nДлительность цикла: %d дней\nДлительность менструации: %d дней",
-                                    existingCycle.getStartDate(),
-                                    existingCycle.getCycleLength(),
-                                    existingCycle.getPeriodLength()
-                            );
-                            sendMessage(chatId, cycleInfo);
-                            log.info("Existing cycle information sent to chatId {}", chatId);
-                        } else {
-                            changeUserState(chatId, new AwaitingStartDateState());
-                            sendMessage(chatId, "Пожалуйста, введите дату начала вашего последнего цикла:");
-                            log.info("AwaitingStartDateState set for chatId {}", chatId);
-                        }
+                        sendMessageWithKeyboard(chatId, "Выберите тип ввода данных:", createDataEntryChoiceKeyboard());
+                        log.info("Data entry choice sent to chatId {}", chatId);
                         break;
-
+                    case "✍️ Ввести исторические данные":
+                        handleHistoricalCycleData(chatId);
+                        log.info("Started handling historical cycle data for chatId {}", chatId);
+                        break;
+                    case "Закончить ввод данных":
+                        sendMessageWithKeyboard(chatId,"Данные исторических циклов сохранены.",createMenuKeyboard());
+                        break;
                     case "👤 Настройка профиля":
                         handleProfileSettings(chatId);
                         log.info("Handled profile settings for chatId {}", chatId);
                         break;
-
+                    case "Ввести данные актуального цикла":
+                        handleActiveCycleDataEntry(chatId);
+                        break;
                     case "🔄 Новый цикл":
                         handleNewCycle(chatId);
                         break;
-
                     case "r":
                         handleRecalculationCommand(chatId);
                         break;
-
                     case "📆 Календарь":
                         handleCalendar(chatId);
                         break;
+                    case "i":
+                        List<Cycle> cycles = userService.findUserCyclesByChatId(chatId);
 
+                        // Формируем сообщение со списком циклов
+                        String cyclesListMessage;
+                        if (cycles.isEmpty()) {
+                            cyclesListMessage = "У вас нет завершенных циклов.";
+                        } else {
+                            cyclesListMessage = "Ваши завершенные циклы:\n" +
+                                    cycles.stream()
+                                            .map(cycle -> String.format("• Цикл с %s по %s (%d дней)",
+                                                    cycle.getStartDate(),
+                                                    cycle.getEndDate(),
+                                                    cycle.getCycleLength()))
+                                            .collect(Collectors.joining("\n"));
+                        }
+
+                        // Отправляем сообщение с циклом и клавиатурой
+                        sendMessageWithKeyboard(chatId, cyclesListMessage, createMenuKeyboard());
+                        break;
                     case "📅 Текущий день цикла":
                         handleCurrentDay(chatId);
                         break;
-
-                    case "Удалить базу":
+                    case "Ввести еще один цикл":
+                        handleHistoricalCycleData(chatId);
+                        break;
+                    case "Удалить один из введенных циклов":
+                        promptCycleDeletion(chatId);
+                        break;
+                    case "d":
                         deleteAllData(chatId);
                         log.info("Deleted all data for chatId {}", chatId);
                         break;
-
+                    case "Назад":
+                        sendMessageWithKeyboard(chatId, "Выберите команду:", createMenuKeyboard());
+                        break;
+                    case "Да, удалить текущий цикл":
+                        Optional<Cycle> activeCycle = cycleService.findActiveOrDelayedCycleByChatId(chatId);
+                        if (activeCycle.isPresent()) {
+                            cycleService.deleteCycleById(activeCycle.get().getCycleId());
+                            userStates.put(chatId, new NoneState());
+                            partialCycleData.remove(chatId);
+                            sendMessageWithKeyboard(chatId, "Активный цикл был успешно удален.", createMenuKeyboard());
+                            log.info("Active cycle successfully deleted and user state reset for chatId {}", chatId);
+                        } else {
+                            sendMessage(chatId, "У вас нет активного цикла для удаления.");
+                            log.warn("No active cycle found for deletion in chatId {}", chatId);
+                        }
+                        break;
                     default:
                         sendMessageWithKeyboard(chatId, "Неизвестная команда. Пожалуйста, выберите опцию из меню.", createMenuKeyboard());
                         log.warn("Unknown command '{}' received from chatId {}", messageText, chatId);
@@ -198,9 +213,27 @@ public class Bot extends TelegramLongPollingBot {
                 }
                 return;
             }
-
-            // Обработка логики состояния пользователя
             UserStateHandler currentState = userStates.get(chatId);
+
+            if (currentState instanceof AwaitingHistoricalCycleDataState) {
+                log.info("Entering AwaitingHistoricalCycleDataState for chatId {}", chatId);
+
+                Cycle historicalCycle = partialCycleData.getOrDefault(chatId, new Cycle());
+
+                currentState.handleState(this, update, historicalCycle);
+                log.debug("AwaitingHistoricalCycleDataState handled for chatId {}", chatId);
+
+                if (historicalCycle.getStartDate() != null && historicalCycle.getCycleLength() != 0 && historicalCycle.getPeriodLength() != 0) {
+                    historicalCycle.setStatus(CycleStatus.COMPLETED);
+                    cycleService.saveHistoricalCycle(historicalCycle);
+                    partialCycleData.remove(chatId);
+                    log.info("Historical cycle saved successfully for chatId {}", chatId);
+                }
+
+                partialCycleData.put(chatId, historicalCycle);
+                return;
+            }
+
             if (currentState != null && !(currentState instanceof NoneState)) {
                 Cycle cycle = partialCycleData.getOrDefault(chatId, new Cycle());
                 currentState.handleState(this, update, cycle);
@@ -209,24 +242,127 @@ public class Bot extends TelegramLongPollingBot {
                 if (cycle.getStartDate() != null && cycle.getCycleLength() != 0 && cycle.getPeriodLength() != 0) {
                     User user = userService.findById(chatId).orElseThrow(() -> new IllegalArgumentException("User not found"));
                     cycle.setUser(user);
-                    CycleCalculator.calculateCycleFields(cycle);
+                    cycleCalculator.calculateCycleFields(cycle);
                     cycle.setStatus(CycleStatus.ACTIVE);
-
                     cycleService.save(cycle);
                     partialCycleData.remove(chatId);
-                    sendMessage(chatId, "Ваш цикл успешно сохранен!");
+                    sendMessageWithKeyboard(chatId, "Ваш цикл успешно сохранен!", createMenuKeyboard());
                     log.info("Cycle saved successfully for chatId {}", chatId);
                 }
 
                 partialCycleData.put(chatId, cycle);
                 return;
-            }
+            }else {
+                log.error("Exception while handling incoming message '{}' from chatId {}", messageText, chatId);
+                sendMessageWithKeyboard(chatId, "Неизвестная команда. Пожалуйста, выберите опцию из меню.", createMenuKeyboard());
 
+
+            }
         } catch (Exception e) {
             log.error("Exception while handling incoming message '{}' from chatId {}", messageText, chatId, e);
-            sendMessageWithKeyboard(chatId, "Произошла ошибка. Попробуйте снова позже.", createMenuKeyboard());
+            sendMessageWithKeyboard(chatId, "", createMenuKeyboard());
         }
     }
+    public void promptCycleDeletion(long chatId) {
+        // Получаем список завершённых циклов
+        List<LocalDate> completedCycleEndDates = userCycleManagementService.findLastCompletedCycleEndDatesByChatId(chatId, 6);
+
+        if (completedCycleEndDates.isEmpty()) {
+            sendMessage(chatId, "У вас нет завершённых циклов для удаления.");
+            return;
+        }
+
+        // Формируем сообщение с пронумерованным списком циклов
+        StringBuilder message = new StringBuilder("Введите номер цикла, который вы хотите удалить:\n");
+        for (int i = 0; i < completedCycleEndDates.size(); i++) {
+            message.append(i + 1).append(". ").append(completedCycleEndDates.get(i)).append("\n");
+        }
+
+        sendMessage(chatId, message.toString());
+        changeUserState(chatId, new
+                AwaitingCycleDeletionState(cycleService, completedCycleEndDates,userCycleManagementService));  // Переход в состояние ожидания номера для удаления
+    }
+
+
+    public void handleHistoricalCycleData(long chatId) {
+        // Получаем завершённые циклы пользователя
+        List<LocalDate> completedCycleEndDates = userCycleManagementService.findLastCompletedCycleEndDatesByChatId(chatId, 6);
+        int completedCyclesCount = completedCycleEndDates.size();
+
+        if (completedCyclesCount >= 6) {
+            // Если уже есть 6 завершённых циклов, выводим сообщение и клавиатуру
+            sendMessageWithKeyboard(chatId,
+                    "У вас уже есть 6 завершённых циклов. Ввод дополнительных данных невозможен.",
+                    createCycleDatesKeyboard());
+        } else {
+            // Если завершённых циклов меньше 6, отправляем список завершённых циклов
+            StringBuilder message = new StringBuilder("Ваши завершённые циклы:\n");
+            for (int i = 0; i < completedCyclesCount; i++) {
+                message.append(i + 1).append(". ").append(completedCycleEndDates.get(i)).append("\n");
+            }
+
+            // Отправляем пользователю сообщение с завершёнными циклами
+            sendMessage(chatId, message.toString());
+
+            // Переходим в состояние AwaitingHistoricalCycleDataState для ввода нового цикла
+            changeUserState(chatId, new AwaitingHistoricalCycleDataState(cycleService, userCycleManagementService, chatId));
+            sendMessageWithKeyboard(chatId, "Пожалуйста, введите дату завершённого цикла:",createDataEntryChoiceKeyboard());
+        }
+    }
+
+
+    private void handleStartCommand(long chatId, Update update) {
+        if (!userService.existsById(chatId)) {
+            User newUser = UserUtils.createNewUser(update);
+            userService.save(newUser);
+            log.info("New user created and saved for chatId {}", chatId);
+        }
+        sendMessageWithKeyboard(chatId, "Добро пожаловать! Выберите команду для начала.", createMenuKeyboard());
+    }
+
+    private void handleActiveCycleDataEntry(long chatId) {
+        Optional<Cycle> activeCycle = cycleService.findActiveOrDelayedCycleByChatId(chatId);
+        if (activeCycle.isPresent()) {
+            Cycle existingCycle = activeCycle.get();
+            String cycleInfo = String.format(
+                    "У вас уже есть активный или задержанный цикл:\nНачало цикла: %s\nДлительность цикла: %d дней\nДлительность менструации: %d дней",
+                    existingCycle.getStartDate(),
+                    existingCycle.getCycleLength(),
+                    existingCycle.getPeriodLength()
+            );
+            sendMessage(chatId, cycleInfo);
+            sendMessageWithKeyboard(chatId,"Хотите удалить этот цикл? ",createDeleteCycleConfirmationKeyboard());
+            log.info("Existing cycle information sent to chatId {}", chatId);
+        } else {
+            changeUserState(chatId, new AwaitingStartDateState());
+            sendMessage(chatId, "Пожалуйста, введите дату начала вашего последнего цикла:");
+            log.info("AwaitingStartDateState set for chatId {}", chatId);
+        }
+    }
+
+    private boolean isMainCommand(String messageText) {
+        return messageText.equals("/start") ||
+                messageText.equals("✍️ Ввести данные") ||
+                messageText.equals("👤 Настройка профиля") ||
+                messageText.equals("🔄 Новый цикл") ||
+                messageText.equals("r") ||
+                messageText.equals("📆 Календарь") ||
+                messageText.equals("📅 Текущий день цикла") ||
+                messageText.equals("d") ||
+                messageText.equals("Назад") ||
+                messageText.equals("✍️ Ввести исторические данные") ||
+                messageText.equals("Ввести данные актуального цикла") ||
+                messageText.equals("r") ||
+                messageText.equals("Закончить ввод данных") ||
+                messageText.equals("Удалить один из введенных циклов") ||
+                messageText.equals("i") ||
+
+                messageText.equals("Ввести еще один цикл") ||
+                messageText.equals("Да, удалить текущий цикл");
+
+
+    }
+
 
     public void handleNewCycle(long chatId) {
         log.debug("Handling new cycle creation for chatId {}", chatId);
@@ -337,10 +473,11 @@ public class Bot extends TelegramLongPollingBot {
 
 
     public void changeUserState(long chatId, UserStateHandler newState) {
-        userStates.put(chatId, newState);
+        synchronized (userStates) {  // Блокируем доступ к userStates
+            log.info("User state changed to '{}' for chatId {}", newState.getClass().getSimpleName(), chatId);
+            userStates.put(chatId, newState);
+        }
     }
-
-
     /**
      * Обрабатывает запрос пользователя на получение календаря.
      *
@@ -491,18 +628,5 @@ public class Bot extends TelegramLongPollingBot {
         return botToken;
     }
 
-    /**
-     * Выполняет завершающие операции перед завершением работы приложения, такие как завершение потоков.
-     */
-    @PreDestroy
-    public void shutDown() {
-        executorService.shutdown();  // Начинаем завершение ExecutorService
-        try {
-            if (!executorService.awaitTermination(60, TimeUnit.SECONDS)) {
-                executorService.shutdownNow();  // Принудительное завершение, если долго завершается
-            }
-        } catch (InterruptedException e) {
-            executorService.shutdownNow();
-        }
-    }
+
 }

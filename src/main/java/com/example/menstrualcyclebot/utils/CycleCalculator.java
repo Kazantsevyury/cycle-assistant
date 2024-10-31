@@ -61,8 +61,8 @@ public class CycleCalculator {
 
         // 7. Расчет даты конца цикла
         // Определяем дату окончания цикла, добавляя длину цикла к дате начала
-        LocalDate endDate = startDate.plusDays(D - 1);
-        cycle.setEndDate(endDate); // Устанавливаем конец цикла
+        //LocalDate endDate = startDate.plusDays(D - 1);
+        //cycle.setEndDate(endDate); // Устанавливаем конец цикла
     }
 
     public static void recalculateCycleFieldsBasedOnEndDate(Cycle cycle) {

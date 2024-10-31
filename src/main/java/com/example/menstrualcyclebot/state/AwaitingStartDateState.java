@@ -31,6 +31,6 @@ public class AwaitingStartDateState implements UserStateHandler {
         // Сохраняем дату начала цикла
         cycle.setStartDate(startDate);
         bot.changeUserState(chatId, new AwaitingPeriodLengthState());
-        bot.sendMessage(chatId, "Пожалуйста, введите длину вашего периода (в днях):");
+        bot.sendMessage(chatId, "Пожалуйста, введите длину менструации (в днях):");
     }
 }
