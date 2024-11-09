@@ -17,13 +17,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
-
+import java.time.format.TextStyle;
+import java.util.Locale;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -96,8 +98,13 @@ public class Bot extends TelegramLongPollingBot {
      */
     @Override
     public void onUpdateReceived(Update update) {
-        processUpdate(update); // Обработка обновления в основном потоке
+        if (update.hasMessage() && update.getMessage().hasText()) {
+            handleIncomingMessage(update);
+        } else if (update.hasCallbackQuery()) {
+            handleCallback(update.getCallbackQuery(), update);  // Передаем update вместе с callbackQuery
+        }
     }
+
 
     /**
      * Обрабатывает входящее обновление от пользователя.
@@ -108,7 +115,7 @@ public class Bot extends TelegramLongPollingBot {
         if (update.hasMessage() && update.getMessage().hasText()) {
             handleIncomingMessage(update);
         } else if (update.hasCallbackQuery()) {
-            handleCallback(update.getCallbackQuery());
+            handleCallback(update.getCallbackQuery(), update);  // Передаем update вместе с callbackQuery
         }
     }
 
@@ -155,7 +162,7 @@ public class Bot extends TelegramLongPollingBot {
                         handleRecalculationCommand(chatId);
                         break;
                     case "📆 Календарь":
-                        handleCalendar(chatId);
+                        handleCalendar(chatId,update);
                         break;
                     case "i":
                         List<Cycle> cycles = userService.findUserCyclesByChatId(chatId);
@@ -283,7 +290,6 @@ public class Bot extends TelegramLongPollingBot {
                 AwaitingCycleDeletionState(cycleService, completedCycleEndDates,userCycleManagementService));  // Переход в состояние ожидания номера для удаления
     }
 
-
     public void handleHistoricalCycleData(long chatId) {
         // Получаем завершённые циклы пользователя
         List<LocalDate> completedCycleEndDates = userCycleManagementService.findLastCompletedCycleEndDatesByChatId(chatId, 6);
@@ -310,15 +316,23 @@ public class Bot extends TelegramLongPollingBot {
         }
     }
 
-
     private void handleStartCommand(long chatId, Update update) {
         if (!userService.existsById(chatId)) {
             User newUser = UserUtils.createNewUser(update);
             userService.save(newUser);
             log.info("New user created and saved for chatId {}", chatId);
         }
-        sendMessageWithKeyboard(chatId, "Добро пожаловать! Выберите команду для начала.", createMenuKeyboard());
+
+        Optional<Cycle> activeCycle = cycleService.findActiveOrDelayedCycleByChatId(chatId);
+
+        if (activeCycle.isEmpty()) {
+            sendMessage(chatId, "Здравствуйте! Для того, чтобы сразу начать мы просим Вас ввести актуальные данные!");
+            handleActiveCycleDataEntry(chatId); // Запускаем ввод данных актуального цикла
+        } else {
+            sendMessageWithKeyboard(chatId, "Чем я могу вам помочь? Выберите одну из команд в меню.", createMenuKeyboard());
+        }
     }
+
 
     private void handleActiveCycleDataEntry(long chatId) {
         Optional<Cycle> activeCycle = cycleService.findActiveOrDelayedCycleByChatId(chatId);
@@ -363,7 +377,6 @@ public class Bot extends TelegramLongPollingBot {
 
     }
 
-
     public void handleNewCycle(long chatId) {
         log.debug("Handling new cycle creation for chatId {}", chatId);
 
@@ -380,6 +393,7 @@ public class Bot extends TelegramLongPollingBot {
             log.info("Completed current cycle with id {} for chatId {}", currentCycle.getCycleId(), chatId);
 
             cycleCalculator.recalculateCycleFieldsBasedOnEndDate(currentCycle);
+
             cycleService.save(currentCycle);
             log.info("Recalculated and saved completed cycle for chatId {}", chatId);
 
@@ -404,7 +418,6 @@ public class Bot extends TelegramLongPollingBot {
     }
 
 
-    // Новый метод для отправки сообщения с кнопкой "Тут"
     public void sendUndoMessage(long chatId, Long cycleId) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
@@ -483,41 +496,81 @@ public class Bot extends TelegramLongPollingBot {
      *
      * @param chatId Идентификатор чата, в котором нужно отправить календарь.
      */
-    public void handleCalendar(long chatId) {
+    public void handleCalendar(long chatId, Update update) {
         try {
-            sendMessage(chatId, "Ваш календарь на октябрь:");
-            sendMessageWithKeyboard(chatId, "Выберите опцию ниже:", calendarService.getCalendar(2024, 10, chatId));
+            LocalDate currentDate = LocalDate.now(); // Получаем текущую дату
+            int currentYear = currentDate.getYear();
+            int currentMonth = currentDate.getMonthValue();
+
+            // Массив названий месяцев в именительном падеже
+            String[] months = {
+                    "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
+                    "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"
+            };
+            String monthName = months[currentMonth - 1]; // Название месяца в именительном падеже
+
+            // Отправляем календарь с текущим месяцем и годом
+            sendMessageWithKeyboard(chatId, monthName, calendarService.getCalendar(currentYear, currentMonth, chatId, update));
         } catch (Exception e) {
+            log.error("Error generating calendar for chatId {}: {}", chatId, e.getMessage(), e);
             sendMessage(chatId, "Произошла ошибка при генерации календаря. Попробуйте снова позже.");
         }
     }
 
 
-    public void handleCallback(CallbackQuery callbackQuery) {
+
+
+
+    public void handleCallback(CallbackQuery callbackQuery, Update update) {
         String callbackData = callbackQuery.getData();
         long chatId = callbackQuery.getMessage().getChatId();
 
         log.debug("Handling callback with data '{}' from chatId {}", callbackData, chatId);
 
         try {
-            // Обработка отмены цикла
-            if (callbackData.startsWith("undo_cycle_")) {
-                Long cycleId = Long.parseLong(callbackData.split("_")[2]);
-                Optional<Cycle> cycleOptional = cycleService.findById(cycleId);
+            switch (callbackData.split(":")[0]) {
+                case "navigate":
+                    // Извлекаем год и месяц из callbackData
+                    String[] data = callbackData.split(":");
+                    int year = Integer.parseInt(data[1]);
+                    int month = Integer.parseInt(data[2]);
 
-                if (cycleOptional.isPresent()) {
-                    cycleService.deleteCycleById(cycleId);
-                    sendMessageWithKeyboard(chatId, "Цикл успешно отменен.", createMenuKeyboard());
-                    log.info("Cycle with id {} successfully canceled for chatId {}", cycleId, chatId);
-                } else {
-                    sendMessage(chatId, "Ошибка: Цикл не найден.");
-                    log.warn("Cycle with id {} not found for cancellation in chatId {}", cycleId, chatId);
-                }
-                return;
-            }
+                    // Получаем название месяца на русском языке
+                    String monthName = LocalDate.of(year, month, 1)
+                            .getMonth()
+                            .getDisplayName(TextStyle.FULL, new Locale("ru"));
 
-            // Обработка других команд
-            switch (callbackData) {
+                    // Генерируем обновлённый календарь
+                    EditMessageText editMessage = new EditMessageText();
+                    editMessage.setChatId(callbackQuery.getMessage().getChatId().toString());
+                    editMessage.setMessageId(callbackQuery.getMessage().getMessageId());
+                    editMessage.setText(monthName);  // Указываем только название месяца
+
+                    // Передаем update в getCalendar для создания пользователя, если его нет
+                    editMessage.setReplyMarkup(calendarService.getCalendar(year, month, chatId, update));
+
+                    try {
+                        execute(editMessage);
+                    } catch (Exception e) {
+                        log.error("Error executing calendar navigation edit message for chatId {}", chatId, e);
+                    }
+                    break;
+
+
+                case "undo_cycle":
+                    Long cycleId = Long.parseLong(callbackData.split("_")[2]);
+                    Optional<Cycle> cycleOptional = cycleService.findById(cycleId);
+
+                    if (cycleOptional.isPresent()) {
+                        cycleService.deleteCycleById(cycleId);
+                        sendMessageWithKeyboard(chatId, "Цикл успешно отменен.", createMenuKeyboard());
+                        log.info("Cycle with id {} successfully canceled for chatId {}", cycleId, chatId);
+                    } else {
+                        sendMessage(chatId, "Ошибка: Цикл не найден.");
+                        log.warn("Cycle with id {} not found for cancellation in chatId {}", cycleId, chatId);
+                    }
+                    break;
+
                 case "new_cycle":
                     handleNewCycle(chatId);
                     log.info("New cycle creation initiated for chatId {}", chatId);
@@ -560,10 +613,21 @@ public class Bot extends TelegramLongPollingBot {
 
 
 
+
     public void sendMessage(long chatId, String text) {
         sendMessageWithKeyboard(chatId, text, null);
     }
-
+    public void sendKeyboard(long chatId , ReplyKeyboard keyboardMarkup) {
+        SendMessage message = new SendMessage();
+        message.setChatId(chatId);
+        if (keyboardMarkup != null) {
+            message.setReplyMarkup(keyboardMarkup);
+        }
+        try {
+            execute(message);
+        } catch (TelegramApiException e) {
+        }
+    }
     public void sendMessageWithKeyboard(long chatId, String text, ReplyKeyboard keyboardMarkup) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);

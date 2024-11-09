@@ -70,11 +70,29 @@ public class CycleCalculator {
         LocalDate startDate = cycle.getStartDate();
         LocalDate endDate = cycle.getEndDate();
 
+
         // 1. Перерасчет длины цикла на основе фактической даты завершения
         // Вычисляем длину цикла как разницу между концом и началом цикла + 1 день
         int recalculatedCycleLength = (int) (endDate.toEpochDay() - startDate.toEpochDay()) + 1;
         cycle.setCycleLength(recalculatedCycleLength); // Обновляем длину цикла
 
+        // Проверка, чтобы длительность менструации не превышала длину цикла
+        if (cycle.getPeriodLength() > recalculatedCycleLength) {
+            // Устанавливаем длительность менструации в длину цикла
+            cycle.setPeriodLength(recalculatedCycleLength);
+
+            // Устанавливаем фазы на 0, так как они невозможны при этой длине
+            cycle.setOvulationDay(0);
+            cycle.setFertileWindowStartDay(0);
+            cycle.setFertileWindowEndDay(0);
+            cycle.setFollicularPhaseStart(null);
+            cycle.setFollicularPhaseEnd(null);
+            cycle.setLutealPhaseStart(null);
+            cycle.setLutealPhaseEnd(endDate);
+        } else {
+            // Если длительность менструации в порядке, пересчитываем поля цикла
+            calculateCycleFields(cycle);
+        }
         // 2. Лютеиновая фаза
         // Лютеиновая фаза заканчивается на дате окончания цикла
         LocalDate lutealPhaseEnd = endDate;

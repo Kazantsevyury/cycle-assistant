@@ -3,23 +3,25 @@ package com.example.menstrualcyclebot.service;
 import com.example.menstrualcyclebot.domain.Cycle;
 import com.example.menstrualcyclebot.domain.User;
 import com.example.menstrualcyclebot.service.dbservices.UserService;
+import com.example.menstrualcyclebot.utils.UserUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
-
+import java.time.format.TextStyle;
+import java.util.*;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor // Lombok автоматически создаёт конструктор с final полями
+@RequiredArgsConstructor
 public class CalendarService {
 
     private final UserService userService;
 
-    public InlineKeyboardMarkup getCalendar(int year, int month, long userChatId) {
+
+
+    public InlineKeyboardMarkup getCalendar(int year, int month, long userChatId, Update update) {
         InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
 
@@ -41,18 +43,19 @@ public class CalendarService {
 
         // Получаем пользователя через UserService
         Optional<User> optionalUser = userService.findById(userChatId);
+        User user;
 
-        // Проверяем, найден ли пользователь
+        // Если пользователь не найден, создаем нового пользователя
         if (!optionalUser.isPresent()) {
-            throw new IllegalArgumentException("Пользователь с chatId " + userChatId + " не найден");
+            user = UserUtils.createNewUser(update);  // Используем Update для создания пользователя
+            userService.save(user);
+        } else {
+            user = optionalUser.get();
         }
 
-        User user = optionalUser.get();
-
-        // Проверяем, есть ли у пользователя зарегистрированные циклы
-        if (user.getCycles() == null || user.getCycles().isEmpty()) {
-            throw new IllegalArgumentException("У вас нет зарегистрированных циклов.");
-        }
+        // Сортируем циклы по дате начала в порядке убывания (более новые в начале)
+        List<Cycle> sortedCycles = new ArrayList<>(user.getCycles());
+        sortedCycles.sort(Comparator.comparing(Cycle::getStartDate).reversed());
 
         // Переменная для отслеживания дня
         int currentDay = 1;
@@ -67,9 +70,16 @@ public class CalendarService {
                     row.add(createButton(" "));
                 } else if (currentDay <= daysInMonth) {
                     String dayText = String.valueOf(currentDay);
-                    // Если у пользователя есть циклы, находим текущий цикл
-                    Cycle cycle = user.getCycles().get(0);  // Предполагаем, что хотя бы один цикл есть
-                    dayText += getEmojiForDay(cycle, year, month, currentDay);
+
+                    // Если у пользователя есть циклы, добавляем эмодзи только из первого подходящего цикла
+                    for (Cycle cycle : sortedCycles) {
+                        String emoji = getEmojiForDay(cycle, year, month, currentDay);
+                        if (!emoji.isEmpty()) {
+                            dayText += emoji;
+                            break; // Выходим из цикла, как только нашли эмодзи для самого нового цикла
+                        }
+                    }
+
                     row.add(createButton(dayText));
                     currentDay++;
                 } else {
@@ -90,39 +100,65 @@ public class CalendarService {
         navigationRow.add(createNavigationButton("Вперед ➡️", year, month + 1));
         keyboard.add(navigationRow);
 
+        // Текущая дата
+        LocalDate today = LocalDate.now();
+        String monthName = today.getMonth().getDisplayName(TextStyle.FULL, new Locale("ru"));
+        String todayText = String.format("Сегодня: %d, %s", today.getDayOfMonth(), monthName);
+
+        // Добавляем строку с текущей датой
+        List<InlineKeyboardButton> todayRow = new ArrayList<>();
+        todayRow.add(createButton(todayText));
+        keyboard.add(todayRow);
+
         inlineKeyboardMarkup.setKeyboard(keyboard);
         return inlineKeyboardMarkup;
     }
+
     private String getEmojiForDay(Cycle cycle, int year, int month, int day) {
         LocalDate date = LocalDate.of(year, month, day); // Дата текущего дня
 
         // Проверяем, попадает ли текущий день в рамки цикла
-        if (!date.isBefore(cycle.getStartDate())) {
+        if (cycle.getStartDate() != null && !date.isBefore(cycle.getStartDate())) {
 
             // Проверка на менструацию
-            LocalDate periodEndDate = cycle.getStartDate().plusDays(cycle.getPeriodLength() - 1); // Последний день менструации
+            LocalDate periodEndDate = cycle.getStartDate().plusDays(cycle.getPeriodLength() - 1);
             if (!date.isAfter(periodEndDate)) {
                 return " 💧"; // Менструация
             }
 
-            // Проверка на овуляцию
-            LocalDate ovulationStartDate = cycle.getStartDate().plusDays(cycle.getFertileWindowStartDay() - 1); // Дата начала овуляции
-            LocalDate ovulationEndDate = cycle.getStartDate().plusDays(cycle.getFertileWindowEndDay() - 1); // Дата окончания овуляции
-            if (!date.isBefore(ovulationStartDate) && !date.isAfter(ovulationEndDate)) {
-                return " 💋"; // Овуляция
+            // Проверка на фолликулярную фазу
+            if (cycle.getFollicularPhaseStart() != null && cycle.getOvulationDate() != null &&
+                    !date.isBefore(cycle.getFollicularPhaseStart()) && date.isBefore(cycle.getOvulationDate())) {
+                return " 👄"; // Фолликулярная фаза
+            }
+
+            // Проверка на фертильное окно
+            // Проверка на фертильное окно
+            if (cycle.getFertileWindowStartDay() != null && cycle.getFertileWindowEndDay() != null) {
+                LocalDate fertileWindowStartDate = cycle.getStartDate().plusDays(cycle.getFertileWindowStartDay() - 1);
+                LocalDate fertileWindowEndDate = cycle.getStartDate().plusDays(cycle.getFertileWindowEndDay() - 1);
+                if (!date.isBefore(fertileWindowStartDate) && !date.isAfter(fertileWindowEndDate)) {
+                    return " 🌕"; // Фертильное окно
+                }
+            }
+
+            // Проверка на день овуляции
+            if (cycle.getOvulationDate() != null && date.isEqual(cycle.getOvulationDate())) {
+                return " 🌷"; // День овуляции
             }
 
             // Проверка на лютеиновую фазу
-            LocalDate lutealPhaseStartDate = cycle.getLutealPhaseStart(); // Дата начала лютеиновой фазы
-            LocalDate lutealPhaseEndDate = cycle.getLutealPhaseEnd(); // Дата окончания лютеиновой фазы
-            if (!date.isBefore(lutealPhaseStartDate) && !date.isAfter(lutealPhaseEndDate)) {
-                return " 🌞"; // Лютеиновая фаза
+            if (cycle.getLutealPhaseStart() != null && cycle.getLutealPhaseEnd() != null &&
+                    !date.isBefore(cycle.getLutealPhaseStart()) && !date.isAfter(cycle.getLutealPhaseEnd())) {
+                return " 🫂"; // Лютеиновая фаза
             }
         }
+
 
         // День без фазы
         return "";
     }
+
 
 
 

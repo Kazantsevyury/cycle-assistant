@@ -22,8 +22,8 @@ public class Cycle {
     private int cycleLength;         // Длина цикла (в днях)
     private int periodLength;        // Длительность менструации (в днях)
     private int ovulationDay;        // День овуляции в цикле
-    private int fertileWindowStartDay;   // Начало фертильного окна
-    private int fertileWindowEndDay;     // Конец фертильного окна
+    private Integer fertileWindowStartDay;   // Начало фертильного окна
+    private Integer fertileWindowEndDay;     // Конец фертильного окна
     private LocalDate ovulationDate; // Дата овуляции
 
     private LocalDate follicularPhaseStart; // Дата начала фолликулярной фазы
