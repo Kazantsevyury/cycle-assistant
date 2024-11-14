@@ -8,6 +8,8 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.example.menstrualcyclebot.utils.BotTextConstants.*;
+
 public class UIUtils {
 
     public static ReplyKeyboardMarkup createMenuKeyboard() {
@@ -17,32 +19,29 @@ public class UIUtils {
         List<KeyboardRow> keyboard = new ArrayList<>();
 
         KeyboardRow row1 = new KeyboardRow();
-        row1.add(new KeyboardButton("💡 Получить рекомендацию"));
-        row1.add(new KeyboardButton("📊 Статистика"));
-        row1.add(new KeyboardButton("📅 Текущий день цикла"));
+        row1.add(new KeyboardButton(GET_RECOMMENDATION));
+        row1.add(new KeyboardButton(STATISTICS));
+        row1.add(new KeyboardButton(CURRENT_CYCLE_DAY));
 
         KeyboardRow row2 = new KeyboardRow();
-        row2.add(new KeyboardButton("👤 Настройка профиля"));
-        row2.add(new KeyboardButton("🔔 Настроить уведомления"));
-        row2.add(new KeyboardButton("📆 Календарь"));
+        row2.add(new KeyboardButton(PROFILE_SETTINGS));
+        row2.add(new KeyboardButton(NOTIFICATIONS_SETTINGS));
+        row2.add(new KeyboardButton(CALENDAR));
 
         KeyboardRow row3 = new KeyboardRow();
-        row3.add(new KeyboardButton("🔄 Новый цикл"));
-        row3.add(new KeyboardButton("✍️ Ввести данные"));
-
-
+        row3.add(new KeyboardButton(NEW_CYCLE));
+        row3.add(new KeyboardButton(ENTER_DATA));
 
         keyboard.add(row1);
-
         keyboard.add(row2);
         keyboard.add(row3);
 
         keyboardMarkup.setKeyboard(keyboard);
-        keyboardMarkup.setResizeKeyboard(true); // Автоматически подгоняет размер кнопок под экран пользователя
-        keyboardMarkup.setOneTimeKeyboard(false); // Меню будет оставаться после использования
+        keyboardMarkup.setResizeKeyboard(true);
+        keyboardMarkup.setOneTimeKeyboard(false);
         return keyboardMarkup;
     }
-    // Меню для исторического ввода данных
+
     public static ReplyKeyboardMarkup createHistoricalDataKeyboard() {
         ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
         keyboardMarkup.setResizeKeyboard(true);
@@ -50,8 +49,8 @@ public class UIUtils {
         List<KeyboardRow> keyboard = new ArrayList<>();
 
         KeyboardRow row = new KeyboardRow();
-        row.add(new KeyboardButton("✍️ Ввести исторические данные"));
-        row.add(new KeyboardButton("Завершить ввод исторических данных"));
+        row.add(new KeyboardButton(ENTER_HISTORICAL_DATA));
+        row.add(new KeyboardButton(FINISH_HISTORICAL_DATA));
         keyboard.add(row);
 
         keyboardMarkup.setKeyboard(keyboard);
@@ -59,6 +58,7 @@ public class UIUtils {
         keyboardMarkup.setOneTimeKeyboard(false);
         return keyboardMarkup;
     }
+
     public static ReplyKeyboardMarkup createDataEntryChoiceKeyboard() {
         ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
         keyboardMarkup.setResizeKeyboard(true);
@@ -66,9 +66,9 @@ public class UIUtils {
         List<KeyboardRow> keyboard = new ArrayList<>();
 
         KeyboardRow row = new KeyboardRow();
-        row.add(new KeyboardButton("Ввести данные актуального цикла"));
-        row.add(new KeyboardButton("✍️ Ввести исторические данные"));
-        row.add(new KeyboardButton("Назад"));
+        row.add(new KeyboardButton(CURRENT_CYCLE_DATA));
+        row.add(new KeyboardButton(ENTER_HISTORICAL_DATA));
+        row.add(new KeyboardButton(BACK));
 
         keyboard.add(row);
         keyboardMarkup.setKeyboard(keyboard);
@@ -85,9 +85,9 @@ public class UIUtils {
         List<KeyboardRow> keyboard = new ArrayList<>();
 
         KeyboardRow row = new KeyboardRow();
-        row.add(new KeyboardButton("Ввести еще один цикл"));
-        row.add(new KeyboardButton("Закончить ввод данных"));
-        row.add(new KeyboardButton("Удалить один из введенных циклов"));
+        row.add(new KeyboardButton(ENTER_ANOTHER_CYCLE));
+        row.add(new KeyboardButton(FINISH_DATA_ENTRY));
+        row.add(new KeyboardButton(DELETE_CYCLE));
 
         keyboard.add(row);
         keyboardMarkup.setKeyboard(keyboard);
@@ -104,8 +104,8 @@ public class UIUtils {
         List<KeyboardRow> keyboard = new ArrayList<>();
 
         KeyboardRow row = new KeyboardRow();
-        row.add(new KeyboardButton("Удалить цикл"));
-        row.add(new KeyboardButton("В главное меню"));
+        row.add(new KeyboardButton(DELETE_CURRENT_CYCLE));
+        row.add(new KeyboardButton(MAIN_MENU));
 
         keyboard.add(row);
         keyboardMarkup.setKeyboard(keyboard);
@@ -114,6 +114,7 @@ public class UIUtils {
 
         return keyboardMarkup;
     }
+
     public static ReplyKeyboardMarkup createDeleteCycleConfirmationKeyboard() {
         ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
         keyboardMarkup.setResizeKeyboard(true);
@@ -121,8 +122,8 @@ public class UIUtils {
         List<KeyboardRow> keyboard = new ArrayList<>();
 
         KeyboardRow row = new KeyboardRow();
-        row.add(new KeyboardButton("Да, удалить текущий цикл"));
-        row.add(new KeyboardButton("Назад"));
+        row.add(new KeyboardButton(CONFIRM_DELETE_CYCLE));
+        row.add(new KeyboardButton(BACK));
 
         keyboard.add(row);
         keyboardMarkup.setKeyboard(keyboard);
@@ -131,6 +132,4 @@ public class UIUtils {
 
         return keyboardMarkup;
     }
-
-
 }

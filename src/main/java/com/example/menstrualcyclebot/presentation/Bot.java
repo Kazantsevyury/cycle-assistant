@@ -1,4 +1,5 @@
 package com.example.menstrualcyclebot.presentation;
+import static com.example.menstrualcyclebot.utils.BotTextConstants.*;
 
 import com.example.menstrualcyclebot.domain.Cycle;
 import com.example.menstrualcyclebot.domain.CycleStatus;
@@ -53,20 +54,6 @@ public class Bot extends TelegramLongPollingBot {
     private final Map<Long, UserStateHandler> userStates = new HashMap<>();
     private final Map<Long, Cycle> partialCycleData = new HashMap<>();
 
-    /**
-     * Конструктор для создания бота с необходимыми зависимостями.
-     *
-     * @param botToken Токен бота для Telegram API.
-     * @param botUsername Имя пользователя бота в Telegram.
-     * @param userService Сервис для управления пользователями.
-     * @param cycleService Сервис для управления циклами.
-     * @param userCycleManagementService Сервис для управления циклами пользователей.
-     * @param calendarService Сервис для работы с календарем.
-     * @param databaseService Сервис для работы с базой данных.
-     * @param cycleCalculator Утилита для вычисления циклов.
-     * @param userEditService Сервис для редактирования данных пользователей.
-     * @param statisticsService Сервис для генерации статистики.
-     */
     public Bot(
             @Value("${telegram.bot.token}") String botToken,
             @Value("${telegram.bot.username}") String botUsername,
@@ -91,11 +78,6 @@ public class Bot extends TelegramLongPollingBot {
         this.cycleRecalculationService = cycleRecalculationService;
     }
 
-    /**
-     * Метод, вызываемый при получении обновления от Telegram API.
-     *
-     * @param update Объект обновления от пользователя.
-     */
     @Override
     public void onUpdateReceived(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
@@ -105,12 +87,6 @@ public class Bot extends TelegramLongPollingBot {
         }
     }
 
-
-    /**
-     * Обрабатывает входящее обновление от пользователя.
-     *
-     * @param update Объект обновления, содержащий информацию от пользователя.
-     */
     public void processUpdate(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
             handleIncomingMessage(update);
@@ -128,40 +104,35 @@ public class Bot extends TelegramLongPollingBot {
         try {
             if (isMainCommand(messageText)) {
                 partialCycleData.remove(chatId);
-                log.info("Cleared temporary data for chatId {}", chatId);
                 userStates.put(chatId, new NoneState());
-                log.info("Reset user state to NoneState for chatId {}", chatId);
 
-                // Обрабатываем команды
                 switch (messageText) {
                     case "/start":
                         handleStartCommand(chatId, update);
                         break;
-                    case "✍️ Ввести данные":
+                    case ENTER_DATA:
                         sendMessageWithKeyboard(chatId, "Выберите тип ввода данных:", createDataEntryChoiceKeyboard());
-                        log.info("Data entry choice sent to chatId {}", chatId);
                         break;
-                    case "✍️ Ввести исторические данные":
+                    case ENTER_HISTORICAL_DATA:
                         handleHistoricalCycleData(chatId);
-                        log.info("Started handling historical cycle data for chatId {}", chatId);
                         break;
-                    case "Закончить ввод данных":
+                    case FINISH_DATA_ENTRY:
                         sendMessageWithKeyboard(chatId,"Данные исторических циклов сохранены.",createMenuKeyboard());
                         break;
-                    case "👤 Настройка профиля":
+                    case PROFILE_SETTINGS:
                         handleProfileSettings(chatId);
                         log.info("Handled profile settings for chatId {}", chatId);
                         break;
-                    case "Ввести данные актуального цикла":
+                    case CURRENT_CYCLE_DATA:
                         handleActiveCycleDataEntry(chatId);
                         break;
-                    case "🔄 Новый цикл":
+                    case NEW_CYCLE:
                         handleNewCycle(chatId);
                         break;
                     case "r":
                         handleRecalculationCommand(chatId);
                         break;
-                    case "📆 Календарь":
+                    case CALENDAR:
                         handleCalendar(chatId,update);
                         break;
                     case "i":
@@ -184,23 +155,23 @@ public class Bot extends TelegramLongPollingBot {
                         // Отправляем сообщение с циклом и клавиатурой
                         sendMessageWithKeyboard(chatId, cyclesListMessage, createMenuKeyboard());
                         break;
-                    case "📅 Текущий день цикла":
+                    case CURRENT_CYCLE_DAY:
                         handleCurrentDay(chatId);
                         break;
-                    case "Ввести еще один цикл":
+                    case ENTER_ANOTHER_CYCLE:
                         handleHistoricalCycleData(chatId);
                         break;
-                    case "Удалить один из введенных циклов":
+                    case DELETE_CYCLE:
                         promptCycleDeletion(chatId);
                         break;
                     case "d":
                         deleteAllData(chatId);
                         log.info("Deleted all data for chatId {}", chatId);
                         break;
-                    case "Назад":
+                    case BACK:
                         sendMessageWithKeyboard(chatId, "Выберите команду:", createMenuKeyboard());
                         break;
-                    case "Да, удалить текущий цикл":
+                    case CONFIRM_DELETE_CYCLE:
                         Optional<Cycle> activeCycle = cycleService.findActiveOrDelayedCycleByChatId(chatId);
                         if (activeCycle.isPresent()) {
                             cycleService.deleteCycleById(activeCycle.get().getCycleId());
