@@ -5,6 +5,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.List;
 
 public class UserUtils {
 
@@ -29,6 +30,16 @@ public class UserUtils {
 
         // Сохраняем московский часовой пояс по умолчанию
         newUser.setTimeZone(DEFAULT_ZONE);
+        // Устанавливаем все уведомления как true
+        newUser.setPhysicalActivityEnabled(true);
+        newUser.setNutritionEnabled(true);
+        newUser.setWorkProductivityNotification(true);
+        newUser.setRelationshipsCommunicationNotification(true);
+        newUser.setCareNotification(true);
+        newUser.setEmotionalWellbeingNotification(true);
+        newUser.setSexNotification(true);
+        newUser.setFertilityWindowNotification(true);
+        newUser.setMenstruationStartNotificationNotification(true);
         return newUser;
     }
 }
