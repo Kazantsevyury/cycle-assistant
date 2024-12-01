@@ -36,4 +36,51 @@ public class User {
 
     @Column(name = "time_zone")
     private ZoneId timeZone;
+
+    @Column(name = "physical_activity_enabled_notification", nullable = false)
+    private boolean physicalActivityEnabled = true;
+
+    @Column(name = "nutrition_enabled_notification", nullable = false)
+    private boolean nutritionEnabled = true;
+
+
+
+    @Column(name = "work_productivity_notification", nullable = false)
+    private boolean workProductivityNotification = true;
+
+    @Column(name = "relationships_communication_notification", nullable = false)
+    private boolean relationshipsCommunicationNotification = true;
+
+    @Column(name = "care_notification", nullable = false)
+    private boolean careNotification = true;
+
+    @Column(name = "emotional_wellbeing_notification", nullable = false)
+    private boolean emotionalWellbeingNotification = true;
+
+    @Column(name = "sex_notification", nullable = false)
+    private boolean sexNotification= true;
+
+    @Column(name ="fertility_window_notification", nullable = false )
+    private boolean fertilityWindowNotification = true;
+
+    @Column(name ="menstruation_start_notification", nullable = false )
+    private boolean menstruationStartNotificationNotification = true;
+
+    @Column(name = "fertility_window_notification_enabled", nullable = false)
+    private boolean fertilityWindowNotificationEnabled = true; // Fertility window notifications - boolean
+
+    @Column(name = "timing_of_fertility_window_notifications")
+    private String timingOfFertilityWindowNotifications;  // Timing of Fertility window notifications
+
+    @Column(name = "days_before_fertility_window_notifications")
+    private int daysBeforeFertilityWindowNotifications;  // How many days before Fertility window notifications
+
+    @Column(name = "menstruation_start_notification_enabled", nullable = false)
+    private boolean menstruationStartNotificationEnabled = true; // Menstruation start notifications - boolean
+
+    @Column(name = "timing_of_menstruation_start_notifications")
+    private String timingOfMenstruationStartNotifications;  // Timing of Menstruation start notifications
+
+    @Column(name = "days_before_menstruation_start_notifications")
+    private int daysBeforeMenstruationStartNotifications;  // How many days before Menstruation start notifications
 }
