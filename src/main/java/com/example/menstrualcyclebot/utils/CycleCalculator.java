@@ -17,8 +17,8 @@ public class CycleCalculator {
         LocalDate startDate = cycle.getStartDate();
 
         // 1. Расчет дня овуляции
-        // Определяем день овуляции как половину длины цикла, округляя до ближайшего целого
-        int ovulationDay = (int) Math.round(D / 2.0);
+        // Определяем день овуляции как половину длины цикла, округляя вверх
+        int ovulationDay = (int) Math.ceil(D / 2.0);
         cycle.setOvulationDay(ovulationDay);
 
         // Определяем дату овуляции, добавляя количество дней с начала цикла
@@ -26,10 +26,10 @@ public class CycleCalculator {
         cycle.setOvulationDate(ovulationDate);
 
         // 2. Расчет начала и конца фертильного окна (раньше овуляторного периода)
-        // Начало фертильного окна за 3 дня до овуляции
-        int fertileWindowStartDay = ovulationDay - 3;
+        // Начало фертильного окна за 3 дня до овуляции (не менее 1)
+        int fertileWindowStartDay = Math.max(1, ovulationDay - 3);
         // Конец фертильного окна через день после овуляции
-        int fertileWindowEndDay = ovulationDay + 1;
+        int fertileWindowEndDay = Math.min(D, ovulationDay + 1);
         cycle.setFertileWindowStartDay(fertileWindowStartDay); // Сохраняем начало фертильного окна
         cycle.setFertileWindowEndDay(fertileWindowEndDay); // Сохраняем конец фертильного окна
 
@@ -54,22 +54,21 @@ public class CycleCalculator {
         // 6. Лютеиновая фаза
         // Лютеиновая фаза начинается сразу после фертильного окна
         LocalDate lutealPhaseStart = fertileWindowEndDate.plusDays(1);
-        // Конец лютеиновой фазы совпадает с последним днем цикла
+        // Конец лютеиновой фазы совпадает с предположительной датой окончания цикла
         LocalDate lutealPhaseEnd = startDate.plusDays(D - 1);
         cycle.setLutealPhaseStart(lutealPhaseStart); // Сохраняем начало лютеиновой фазы
         cycle.setLutealPhaseEnd(lutealPhaseEnd); // Сохраняем конец лютеиновой фазы
 
-        // 7. Расчет даты конца цикла
+        // 7. Расчет предполагаемой даты конца цикла
         // Определяем дату окончания цикла, добавляя длину цикла к дате начала
-        //LocalDate endDate = startDate.plusDays(D - 1);
-        //cycle.setEndDate(endDate); // Устанавливаем конец цикла
+        LocalDate endDate = startDate.plusDays(D - 1);
+        cycle.setExpectedEndDate(endDate); // Устанавливаем предполагаемую дату окончания цикла
     }
 
     public static void recalculateCycleFieldsBasedOnEndDate(Cycle cycle) {
         // Получаем начальную и конечную дату цикла из объекта cycle
         LocalDate startDate = cycle.getStartDate();
         LocalDate endDate = cycle.getEndDate();
-
 
         // 1. Перерасчет длины цикла на основе фактической даты завершения
         // Вычисляем длину цикла как разницу между концом и началом цикла + 1 день
@@ -93,9 +92,13 @@ public class CycleCalculator {
             // Если длительность менструации в порядке, пересчитываем поля цикла
             calculateCycleFields(cycle);
         }
-        // 2. Лютеиновая фаза
-        // Лютеиновая фаза заканчивается на дате окончания цикла
-        LocalDate lutealPhaseEnd = endDate;
-        cycle.setLutealPhaseEnd(lutealPhaseEnd); // Устанавливаем конец лютеиновой фазы
+
+        // Обновление isExtended в зависимости от delayDays
+        updateIsExtended(cycle);
+    }
+
+    // Метод для обновления значения isExtended
+    private static void updateIsExtended(Cycle cycle) {
+        cycle.setExtended(cycle.getDelayDays() != 0);
     }
 }
