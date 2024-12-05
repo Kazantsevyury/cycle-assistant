@@ -5,19 +5,21 @@ import com.example.menstrualcyclebot.domain.Cycle;
 import com.example.menstrualcyclebot.domain.CycleStatus;
 import com.example.menstrualcyclebot.domain.User;
 import com.example.menstrualcyclebot.service.CalendarService;
+import com.example.menstrualcyclebot.service.NotificationService;
 import com.example.menstrualcyclebot.service.StatisticsService;
 import com.example.menstrualcyclebot.service.UserEditService;
 import com.example.menstrualcyclebot.service.dbservices.*;
 import com.example.menstrualcyclebot.state.*;
+import com.example.menstrualcyclebot.utils.BotTextConstants;
 import com.example.menstrualcyclebot.utils.CycleCalculator;
 import com.example.menstrualcyclebot.utils.UserUtils;
-import jakarta.annotation.PreDestroy;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -25,8 +27,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
-import java.time.format.TextStyle;
-import java.util.Locale;
+
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -49,10 +50,10 @@ public class Bot extends TelegramLongPollingBot {
     private final CycleCalculator cycleCalculator;
     public final UserEditService userEditService;
     private final StatisticsService statisticsService;
-    private final CycleRecalculationService cycleRecalculationService; // Добавляем пересчёт циклов
-
+    private final CycleRecalculationService cycleRecalculationService;
     private final Map<Long, UserStateHandler> userStates = new HashMap<>();
     private final Map<Long, Cycle> partialCycleData = new HashMap<>();
+    private final NotificationService notificationService;
 
     public Bot(
             @Value("${telegram.bot.token}") String botToken,
@@ -64,7 +65,7 @@ public class Bot extends TelegramLongPollingBot {
             DatabaseService databaseService,
             CycleCalculator cycleCalculator,
             UserEditService userEditService,
-            StatisticsService statisticsService, CycleRecalculationService cycleRecalculationService) {
+            StatisticsService statisticsService, CycleRecalculationService cycleRecalculationService, NotificationService notificationService) {
         this.botToken = botToken;
         this.botUsername = botUsername;
         this.userService = userService;
@@ -76,6 +77,7 @@ public class Bot extends TelegramLongPollingBot {
         this.userEditService = userEditService;
         this.statisticsService = statisticsService;
         this.cycleRecalculationService = cycleRecalculationService;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -129,9 +131,13 @@ public class Bot extends TelegramLongPollingBot {
                     case NEW_CYCLE:
                         handleNewCycle(chatId);
                         break;
+                    case SEX:
+
                     case "r":
                         handleRecalculationCommand(chatId);
                         break;
+
+
                     case CALENDAR:
                         handleCalendar(chatId,update);
                         break;
@@ -241,6 +247,8 @@ public class Bot extends TelegramLongPollingBot {
             sendMessageWithKeyboard(chatId, "", createMenuKeyboard());
         }
     }
+
+
     public void promptCycleDeletion(long chatId) {
         // Получаем список завершённых циклов
         List<LocalDate> completedCycleEndDates = userCycleManagementService.findLastCompletedCycleEndDatesByChatId(chatId, 6);
@@ -328,7 +336,7 @@ public class Bot extends TelegramLongPollingBot {
     private boolean isMainCommand(String messageText) {
         return messageText.equals("/start") ||
                 messageText.equals("✍️ Ввести данные") ||
-                messageText.equals("👤 Настройка профиля") ||
+                messageText.equals(PROFILE_SETTINGS) ||
                 messageText.equals("🔄 Новый цикл") ||
                 messageText.equals("r") ||
                 messageText.equals("📆 Календарь") ||
@@ -341,6 +349,7 @@ public class Bot extends TelegramLongPollingBot {
                 messageText.equals("Закончить ввод данных") ||
                 messageText.equals("Удалить один из введенных циклов") ||
                 messageText.equals("i") ||
+                messageText.equals(NOTIFICATIONS_SETTINGS) ||
 
                 messageText.equals("Ввести еще один цикл") ||
                 messageText.equals("Да, удалить текущий цикл");
@@ -392,14 +401,14 @@ public class Bot extends TelegramLongPollingBot {
     public void sendUndoMessage(long chatId, Long cycleId) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
-        message.setText("Ваш цикл успешно обновлен, если вы ошиблись, то нажмите [Тут]");
+        message.setText("Ваш цикл успешно обновлен.");
 
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> buttons = new ArrayList<>();
         List<InlineKeyboardButton> row = new ArrayList<>();
 
         InlineKeyboardButton undoButton = new InlineKeyboardButton();
-        undoButton.setText("Тут");
+        undoButton.setText("Если вы ошиблись, то нажмите тут");
         undoButton.setCallbackData("undo_cycle_" + cycleId); // callbackData включает ID цикла для удаления
 
         row.add(undoButton);
@@ -473,15 +482,8 @@ public class Bot extends TelegramLongPollingBot {
             int currentYear = currentDate.getYear();
             int currentMonth = currentDate.getMonthValue();
 
-            // Массив названий месяцев в именительном падеже
-            String[] months = {
-                    "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
-                    "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"
-            };
-            String monthName = months[currentMonth - 1]; // Название месяца в именительном падеже
-
             // Отправляем календарь с текущим месяцем и годом
-            sendMessageWithKeyboard(chatId, monthName, calendarService.getCalendar(currentYear, currentMonth, chatId, update));
+            sendMessageWithKeyboard(chatId, MESSAGE_BEFORE_CALENDAR, calendarService.getCalendar(currentYear, currentMonth, chatId, update));
         } catch (Exception e) {
             log.error("Error generating calendar for chatId {}: {}", chatId, e.getMessage(), e);
             sendMessage(chatId, "Произошла ошибка при генерации календаря. Попробуйте снова позже.");
@@ -495,57 +497,66 @@ public class Bot extends TelegramLongPollingBot {
     public void handleCallback(CallbackQuery callbackQuery, Update update) {
         String callbackData = callbackQuery.getData();
         long chatId = callbackQuery.getMessage().getChatId();
+        Integer messageId = callbackQuery.getMessage().getMessageId();
 
         log.debug("Handling callback with data '{}' from chatId {}", callbackData, chatId);
 
         try {
-            switch (callbackData.split(":")[0]) {
-                case "navigate":
-                    // Извлекаем год и месяц из callbackData
-                    String[] data = callbackData.split(":");
-                    int year = Integer.parseInt(data[1]);
-                    int month = Integer.parseInt(data[2]);
+            if (isNotificationCallback(callbackData)) {
+                // Обработка изменения состояния уведомлений
+                notificationService.toggleNotificationSetting(chatId, callbackData);
 
-                    // Получаем название месяца на русском языке
-                    String monthName = LocalDate.of(year, month, 1)
-                            .getMonth()
-                            .getDisplayName(TextStyle.FULL, new Locale("ru"));
+                // Отправляем обновленное меню уведомлений с изменённой кнопкой
+                EditMessageReplyMarkup editMarkup = notificationService.createNotificationSettingsMenu(chatId, messageId);
+                execute(editMarkup);
+            } else {
+                switch (callbackData.split(":")[0]) {
+                    case "navigate":
+                        // Извлекаем год и месяц из callbackData
+                        String[] data = callbackData.split(":");
+                        int year = Integer.parseInt(data[1]);
+                        int month = Integer.parseInt(data[2]);
 
-                    // Генерируем обновлённый календарь
-                    EditMessageText editMessage = new EditMessageText();
-                    editMessage.setChatId(callbackQuery.getMessage().getChatId().toString());
-                    editMessage.setMessageId(callbackQuery.getMessage().getMessageId());
-                    editMessage.setText(monthName);  // Указываем только название месяца
+                        // Генерируем обновлённый календарь
+                        EditMessageText editMessage = new EditMessageText();
+                        editMessage.setChatId(callbackQuery.getMessage().getChatId().toString());
+                        editMessage.setMessageId(callbackQuery.getMessage().getMessageId());
+                        editMessage.setText(MESSAGE_BEFORE_CALENDAR);
 
-                    // Передаем update в getCalendar для создания пользователя, если его нет
-                    editMessage.setReplyMarkup(calendarService.getCalendar(year, month, chatId, update));
+                        // Передаем update в getCalendar для создания пользователя, если его нет
+                        editMessage.setReplyMarkup(calendarService.getCalendar(year, month, chatId, update));
 
-                    try {
-                        execute(editMessage);
-                    } catch (Exception e) {
-                        log.error("Error executing calendar navigation edit message for chatId {}", chatId, e);
-                    }
-                    break;
+                        try {
+                            execute(editMessage);
+                        } catch (Exception e) {
+                            log.error("Error executing calendar navigation edit message for chatId {}", chatId, e);
+                        }
+                        break;
 
+                    case "undo_cycle":
+                        Long cycleId = Long.parseLong(callbackData.split("_")[2]);
+                        Optional<Cycle> cycleOptional = cycleService.findById(cycleId);
 
-                case "undo_cycle":
-                    Long cycleId = Long.parseLong(callbackData.split("_")[2]);
-                    Optional<Cycle> cycleOptional = cycleService.findById(cycleId);
-
-                    if (cycleOptional.isPresent()) {
-                        cycleService.deleteCycleById(cycleId);
-                        sendMessageWithKeyboard(chatId, "Цикл успешно отменен.", createMenuKeyboard());
-                        log.info("Cycle with id {} successfully canceled for chatId {}", cycleId, chatId);
-                    } else {
-                        sendMessage(chatId, "Ошибка: Цикл не найден.");
-                        log.warn("Cycle with id {} not found for cancellation in chatId {}", cycleId, chatId);
-                    }
-                    break;
+                        if (cycleOptional.isPresent()) {
+                            cycleService.deleteCycleById(cycleId);
+                            sendMessageWithKeyboard(chatId, "Цикл успешно отменен.", createMenuKeyboard());
+                            log.info("Cycle with id {} successfully canceled for chatId {}", cycleId, chatId);
+                        } else {
+                            sendMessage(chatId, "Ошибка: Цикл не найден.");
+                            log.warn("Cycle with id {} not found for cancellation in chatId {}", cycleId, chatId);
+                        }
+                        break;
 
                 case "new_cycle":
                     handleNewCycle(chatId);
                     log.info("New cycle creation initiated for chatId {}", chatId);
                     break;
+
+                case "to_Notifications_settings":
+                    case BACK_TO_NOTIFICATION_SETTING: // Просто повторите еще один `case` для второго варианта
+                        SendMessage notificationMenu = notificationService.createMainNotificationSettingsMenu(chatId);
+                        execute(notificationMenu);
+                        break;
 
                 case "edit_salutation":
                     userStates.put(chatId, new AwaitingSalutationState());
@@ -565,16 +576,29 @@ public class Bot extends TelegramLongPollingBot {
                     log.info("Set state to AwaitingTimezoneState for chatId {}", chatId);
                     break;
 
+                case SETTING_UP_GENERAL_RECOMMENDATIONS:
+                    EditMessageReplyMarkup editMessageReplyMarkup = notificationService.createNotificationSettingsMenu(chatId, messageId);
+                    execute(editMessageReplyMarkup);
+                    break;
+
+
+
+
+                case BACK_TO_USER_SETTINGS_MENU:
+                    handleProfileSettings(chatId);
+                    break;
+
                 case "back_to_main_menu":
                     sendMessageWithKeyboard(chatId, "Главное меню:", createMenuKeyboard());
                     userStates.put(chatId, new NoneState());
                     log.info("Returned to main menu and reset state for chatId {}", chatId);
                     break;
 
-                default:
-                    sendMessage(chatId, "Произошла ошибка. Попробуйте снова.");
-                    log.warn("Received unknown callback data '{}' from chatId {}", callbackData, chatId);
-                    break;
+                    default:
+                        sendMessage(chatId, "Произошла ошибка. Попробуйте снова.");
+                        log.warn("Received unknown callback data '{}' from chatId {}", callbackData, chatId);
+                        break;
+                }
             }
         } catch (Exception e) {
             log.error("Exception while handling callback '{}' from chatId {}", callbackData, chatId, e);
@@ -583,22 +607,10 @@ public class Bot extends TelegramLongPollingBot {
     }
 
 
-
-
     public void sendMessage(long chatId, String text) {
         sendMessageWithKeyboard(chatId, text, null);
     }
-    public void sendKeyboard(long chatId , ReplyKeyboard keyboardMarkup) {
-        SendMessage message = new SendMessage();
-        message.setChatId(chatId);
-        if (keyboardMarkup != null) {
-            message.setReplyMarkup(keyboardMarkup);
-        }
-        try {
-            execute(message);
-        } catch (TelegramApiException e) {
-        }
-    }
+
     public void sendMessageWithKeyboard(long chatId, String text, ReplyKeyboard keyboardMarkup) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
@@ -663,5 +675,13 @@ public class Bot extends TelegramLongPollingBot {
         return botToken;
     }
 
-
+    private boolean isNotificationCallback(String callbackData) {
+        return callbackData.equals("PHYSICAL_ACTIVITY")
+                || callbackData.equals("NUTRITION")
+                || callbackData.equals("WORK_PRODUCTIVITY")
+                || callbackData.equals("RELATIONSHIPS_COMMUNICATION")
+                || callbackData.equals("CARE")
+                || callbackData.equals("EMOTIONAL_WELLBEING")
+                || callbackData.equals("SEX");
+    }
 }

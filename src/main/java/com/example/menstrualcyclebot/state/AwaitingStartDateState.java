@@ -19,7 +19,7 @@ public class AwaitingStartDateState implements UserStateHandler {
 
         if (startDate == null) {
             // Сообщаем пользователю, если дата не была распознана
-            bot.sendMessage(chatId, "Пожалуйста, введите дату в одном из поддерживаемых форматов: dd.MM.yyyy, d.MM.yyyy, d.M.yyyy, dd-MM-yyyy.");
+            bot.sendMessage(chatId, "Пожалуйста, введите дату в формате: дд.мм.гггг");
             return;
         }
 

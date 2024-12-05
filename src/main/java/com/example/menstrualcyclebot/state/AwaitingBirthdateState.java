@@ -20,7 +20,7 @@ public class AwaitingBirthdateState implements UserStateHandler {
 
         if (birthdate == null) {
             // Сообщаем пользователю, если дата не была распознана
-            bot.sendMessage(chatId, "Пожалуйста, введите дату в одном из поддерживаемых форматов: dd.MM.yyyy, d.MM.yyyy, d.M.yyyy, dd-MM-yyyy.");
+            bot.sendMessage(chatId, "Пожалуйста, введите дату в одном из поддерживаемых формате: dd.mm.yyyy.");
             return;
         }
 

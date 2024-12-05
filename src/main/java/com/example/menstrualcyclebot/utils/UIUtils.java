@@ -20,12 +20,10 @@ public class UIUtils {
 
         KeyboardRow row1 = new KeyboardRow();
         row1.add(new KeyboardButton(GET_RECOMMENDATION));
-        row1.add(new KeyboardButton(STATISTICS));
         row1.add(new KeyboardButton(CURRENT_CYCLE_DAY));
 
         KeyboardRow row2 = new KeyboardRow();
         row2.add(new KeyboardButton(PROFILE_SETTINGS));
-        row2.add(new KeyboardButton(NOTIFICATIONS_SETTINGS));
         row2.add(new KeyboardButton(CALENDAR));
 
         KeyboardRow row3 = new KeyboardRow();

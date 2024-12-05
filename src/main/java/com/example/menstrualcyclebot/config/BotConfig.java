@@ -49,8 +49,9 @@ public class BotConfig {
             CycleCalculator cycleCalculator,
             UserEditService userEditService,
             StatisticsService statisticsService,
-            CycleRecalculationService cycleRecalculationService) {
-        return new Bot(botToken, botUsername, userService, cycleService, userCycleManagementService, calendarService, databaseService, cycleCalculator, userEditService, statisticsService,cycleRecalculationService);
+            CycleRecalculationService cycleRecalculationService,
+    NotificationService notificationService) {
+        return new Bot(botToken, botUsername, userService, cycleService, userCycleManagementService, calendarService, databaseService, cycleCalculator, userEditService, statisticsService,cycleRecalculationService,notificationService);
     }
 
     @Bean
@@ -74,7 +75,7 @@ public class BotConfig {
 
     // Создаём бин для NotificationService
     @Bean
-    public NotificationService notificationService() {
-        return new NotificationService();
+    public NotificationService notificationService(UserService userService) {
+        return new NotificationService(userService);
     }
 }
