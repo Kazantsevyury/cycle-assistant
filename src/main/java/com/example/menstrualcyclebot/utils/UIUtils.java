@@ -19,16 +19,16 @@ public class UIUtils {
         List<KeyboardRow> keyboard = new ArrayList<>();
 
         KeyboardRow row1 = new KeyboardRow();
-        row1.add(new KeyboardButton(GET_RECOMMENDATION));
-        row1.add(new KeyboardButton(CURRENT_CYCLE_DAY));
+        row1.add(new KeyboardButton(COMMAND_GET_RECOMMENDATION));
+        row1.add(new KeyboardButton(COMMAND_CURRENT_CYCLE_DAY));
 
         KeyboardRow row2 = new KeyboardRow();
-        row2.add(new KeyboardButton(PROFILE_SETTINGS));
-        row2.add(new KeyboardButton(CALENDAR));
+        row2.add(new KeyboardButton(COMMAND_PROFILE_SETTINGS));
+        row2.add(new KeyboardButton(COMMAND_CALENDAR));
 
         KeyboardRow row3 = new KeyboardRow();
-        row3.add(new KeyboardButton(NEW_CYCLE));
-        row3.add(new KeyboardButton(ENTER_DATA));
+        row3.add(new KeyboardButton(COMMAND_NEW_CYCLE));
+        row3.add(new KeyboardButton(COMMAND_ENTER_DATA));
 
         keyboard.add(row1);
         keyboard.add(row2);

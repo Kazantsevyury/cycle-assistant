@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import static com.example.menstrualcyclebot.utils.BotTextConstants.NOTIFICATIONS_SETTINGS;
+import static com.example.menstrualcyclebot.utils.BotTextConstants.COMMAND_NOTIFICATIONS_SETTINGS;
 
 @Service
 @AllArgsConstructor
@@ -69,7 +69,7 @@ public class UserEditService {
         keyboard.add(timeZoneRow);
 
         List<InlineKeyboardButton> notificationRow = new ArrayList<>();
-        notificationRow.add(createButton(NOTIFICATIONS_SETTINGS, "to_Notifications_settings"));
+        notificationRow.add(createButton(COMMAND_NOTIFICATIONS_SETTINGS, "to_Notifications_settings"));
         keyboard.add(notificationRow);
         // Кнопка назад
         List<InlineKeyboardButton> backRow = new ArrayList<>();
