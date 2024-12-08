@@ -475,107 +475,145 @@ public class Bot extends TelegramLongPollingBot {
         long chatId = callbackQuery.getMessage().getChatId();
         Integer messageId = callbackQuery.getMessage().getMessageId();
 
+        log.info("Received callback: {} for chatId: {}, messageId: {}", callbackData, chatId, messageId);
 
         try {
-            if (isNotificationCallback(callbackData)) {
-                // Обработка изменения состояния уведомлений
+            if (callbackData.equals(SETTING_UP_FERTILE_WINDOW_RECOMMENDATIONS)) {
+                log.info("Handling SETTING_UP_FERTILE_WINDOW_RECOMMENDATIONS for chatId: {}", chatId);
+                EditMessageReplyMarkup replyMarkup = notificationService.createFertilityWindowMenu(chatId, messageId);
+                execute(replyMarkup);
+            } else if (isNotificationCallback(callbackData)) {
+                log.info("Handling notification callback: {} for chatId: {}", callbackData, chatId);
                 notificationService.toggleNotificationSetting(chatId, callbackData);
 
-                // Отправляем обновленное меню уведомлений с изменённой кнопкой
                 EditMessageReplyMarkup editMarkup = notificationService.createNotificationSettingsMenu(chatId, messageId);
                 execute(editMarkup);
+            } else if (callbackData.startsWith("fertility")) {
+                log.info("Handling fertility callback: {} for chatId: {}", callbackData, chatId);
+                handleFertilityCallback(callbackData, chatId);
             } else {
+                log.info("Handling general callback: {} for chatId: {}", callbackData, chatId);
                 switch (callbackData.split(":")[0]) {
                     case "navigate":
-                        // Извлекаем год и месяц из callbackData
                         String[] data = callbackData.split(":");
                         int year = Integer.parseInt(data[1]);
                         int month = Integer.parseInt(data[2]);
 
-                        // Генерируем обновлённый календарь
+                        log.info("Navigating calendar to year: {}, month: {} for chatId: {}", year, month, chatId);
+
                         EditMessageText editMessage = new EditMessageText();
                         editMessage.setChatId(callbackQuery.getMessage().getChatId().toString());
                         editMessage.setMessageId(callbackQuery.getMessage().getMessageId());
                         editMessage.setText(MESSAGE_BEFORE_CALENDAR);
-
-                        // Передаем update в getCalendar для создания пользователя, если его нет
                         editMessage.setReplyMarkup(calendarService.getCalendar(year, month, chatId, update));
 
-                        try {
-                            execute(editMessage);
-                        } catch (Exception e) {
-                            log.error("Error executing calendar navigation edit message for chatId {}", chatId, e);
-                        }
+                        execute(editMessage);
                         break;
 
                     case "undo_cycle":
                         Long cycleId = Long.parseLong(callbackData.split("_")[2]);
-                        Optional<Cycle> cycleOptional = cycleService.findById(cycleId);
+                        log.info("Undoing cycle with id: {} for chatId: {}", cycleId, chatId);
 
+                        Optional<Cycle> cycleOptional = cycleService.findById(cycleId);
                         if (cycleOptional.isPresent()) {
                             cycleService.deleteCycleById(cycleId);
                             sendMessageWithKeyboard(chatId, CYCLE_CANCELLED_SUCCESSFULLY, createMenuKeyboard());
-                            log.info("Cycle with id {} successfully canceled for chatId {}", cycleId, chatId);
+                            log.info("Cycle with id: {} successfully canceled for chatId: {}", cycleId, chatId);
                         } else {
                             sendMessage(chatId, ERROR_CYCLE_NOT_FOUND);
-                            log.warn("Cycle with id {} not found for cancellation in chatId {}", cycleId, chatId);
+                            log.warn("Cycle with id: {} not found for cancellation in chatId: {}", cycleId, chatId);
                         }
                         break;
 
-                case "new_cycle":
-                    handleNewCycle(chatId);
-                    log.info("New cycle creation initiated for chatId {}", chatId);
-                    break;
+                    case "new_cycle":
+                        log.info("Handling new cycle creation for chatId: {}", chatId);
+                        handleNewCycle(chatId);
+                        break;
 
-                case "to_Notifications_settings":
+                    case "to_Notifications_settings":
                     case BACK_TO_NOTIFICATION_SETTING:
+                        log.info("Navigating to notification settings for chatId: {}", chatId);
                         SendMessage notificationMenu = notificationService.createMainNotificationSettingsMenu(chatId);
                         execute(notificationMenu);
                         break;
 
-                case "edit_salutation":
-                    userStates.put(chatId, new AwaitingSalutationState());
-                    sendMessage(chatId, "Введите новое обращение:");
-                    log.info("Set state to AwaitingSalutationState for chatId {}", chatId);
-                    break;
+                    case "edit_salutation":
+                        log.info("Entering salutation edit mode for chatId: {}", chatId);
+                        userStates.put(chatId, new AwaitingSalutationState());
+                        sendMessage(chatId, "Введите новое обращение:");
+                        break;
 
-                case "edit_birth_date":
-                    userStates.put(chatId, new AwaitingBirthdateState());
-                    sendMessage(chatId, ENTER_DATE_FORMAT_DD_MM_YYYY);
-                    break;
+                    case "edit_birth_date":
+                        log.info("Entering birth date edit mode for chatId: {}", chatId);
+                        userStates.put(chatId, new AwaitingBirthdateState());
+                        sendMessage(chatId, ENTER_DATE_FORMAT_DD_MM_YYYY);
+                        break;
 
-                case "edit_time_zone":
-                    userStates.put(chatId, new AwaitingTimezoneState());
-                    sendMessage(chatId, ENTER_TIMEZONE_OFFSET);
-                    break;
+                    case "edit_time_zone":
+                        log.info("Entering time zone edit mode for chatId: {}", chatId);
+                        userStates.put(chatId, new AwaitingTimezoneState());
+                        sendMessage(chatId, ENTER_TIMEZONE_OFFSET);
+                        break;
 
-                case SETTING_UP_GENERAL_RECOMMENDATIONS:
-                    EditMessageReplyMarkup editMessageReplyMarkup = notificationService.createNotificationSettingsMenu(chatId, messageId);
-                    execute(editMessageReplyMarkup);
-                    break;
+                    case SETTING_UP_GENERAL_RECOMMENDATIONS:
+                        log.info("Handling general recommendations settings for chatId: {}", chatId);
+                        EditMessageReplyMarkup editMessageReplyMarkup = notificationService.createNotificationSettingsMenu(chatId, messageId);
+                        execute(editMessageReplyMarkup);
+                        break;
 
+                    case BACK_TO_USER_SETTINGS_MENU:
+                        log.info("Navigating back to user settings menu for chatId: {}", chatId);
+                        handleProfileSettings(chatId);
+                        break;
 
-
-
-                case BACK_TO_USER_SETTINGS_MENU:
-                    handleProfileSettings(chatId);
-                    break;
-
-                case "back_to_main_menu":
-                    sendMessageWithKeyboard(chatId, MAIN_MENU, createMenuKeyboard());
-                    userStates.put(chatId, new NoneState());
-                    break;
+                    case "back_to_main_menu":
+                        log.info("Navigating back to main menu for chatId: {}", chatId);
+                        sendMessageWithKeyboard(chatId, MAIN_MENU, createMenuKeyboard());
+                        userStates.put(chatId, new NoneState());
+                        break;
 
                     default:
+                        log.warn("Unknown callback received: {} for chatId: {}", callbackData, chatId);
                         sendMessage(chatId, ERROR_TRY_AGAIN_LATER);
                         break;
                 }
             }
         } catch (Exception e) {
+            log.error("Error processing callback for chatId: {}, messageId: {}, callbackData: {}", chatId, messageId, callbackData, e);
             sendMessage(chatId, ERROR_TRY_AGAIN_LATER);
         }
     }
 
+    private void handleFertilityCallback(String callbackData, Long chatId) {
+        log.info("Processing fertility callback: {} for chatId: {}", callbackData, chatId);
+
+        User user = userService.findById(chatId).orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        switch (callbackData) {
+            case "toggle_fertility":
+                boolean newStatus = !user.isFertilityWindowNotificationEnabled();
+                user.setFertilityWindowNotificationEnabled(newStatus);
+                userService.save(user);
+                log.info("Fertility notification toggled to: {} for chatId: {}", newStatus, chatId);
+                sendMessage(chatId, "Настройки уведомлений обновлены!");
+                break;
+
+            case "edit_timing_fertility":
+                log.info("Entering timing edit mode for fertility notifications for chatId: {}", chatId);
+                sendMessage(chatId, "Введите время уведомлений (например, 08:00):");
+                break;
+
+            case "edit_days_before_fertility":
+                log.info("Entering days before fertility window edit mode for chatId: {}", chatId);
+                sendMessage(chatId, "Введите количество дней до окна фертильности:");
+                break;
+
+            default:
+                log.warn("Unknown fertility callback received: {} for chatId: {}", callbackData, chatId);
+                sendMessage(chatId, "Неизвестное действие.");
+                break;
+        }
+    }
 
     public void sendMessage(long chatId, String text) {
         sendMessageWithKeyboard(chatId, text, null);

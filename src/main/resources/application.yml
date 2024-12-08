@@ -11,7 +11,3 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true  # Показывает SQL-запросы в логах, что поможет в отладке
-    properties:
-      hibernate:
-        format_sql: true  # Форматирует SQL-запросы в более читаемом виде

@@ -19,7 +19,6 @@ public class UserUtils {
         newUser.setChatId(chatId);
         newUser.setUsername(update.getMessage().getFrom().getUserName());
 
-
         // Установка имени/обращения пользователя
         if (update.getMessage().getFrom().getFirstName() != null) {
             newUser.setSalutation(update.getMessage().getFrom().getFirstName());
@@ -30,6 +29,7 @@ public class UserUtils {
 
         // Сохраняем московский часовой пояс по умолчанию
         newUser.setTimeZone(DEFAULT_ZONE);
+
         // Устанавливаем все уведомления как true
         newUser.setPhysicalActivityEnabled(true);
         newUser.setNutritionEnabled(true);
@@ -40,6 +40,16 @@ public class UserUtils {
         newUser.setSexNotification(true);
         newUser.setFertilityWindowNotification(true);
         newUser.setMenstruationStartNotificationNotification(true);
+
+        // Установка времени уведомлений по умолчанию на 10 утра
+        newUser.setTimingOfFertilityWindowNotifications("10:00");
+        newUser.setTimingOfMenstruationStartNotifications("10:00");
+
+        // Установка количества дней до отправки уведомлений по умолчанию на 2
+        newUser.setDaysBeforeFertilityWindowNotifications(2);
+        newUser.setDaysBeforeMenstruationStartNotifications(2);
+
         return newUser;
     }
+
 }
