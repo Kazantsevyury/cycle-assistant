@@ -38,13 +38,13 @@ public class UserUtils {
         newUser.setCareNotification(true);
         newUser.setEmotionalWellbeingNotification(true);
         newUser.setSexNotification(true);
-        newUser.setFertilityWindowNotification(true);
-        newUser.setMenstruationStartNotificationNotification(true);
+        newUser.setFertilityWindowNotificationEnabled(true);
+        newUser.setMenstruationStartNotificationEnabled(true);
 
         // Установка времени уведомлений по умолчанию на 10 утра
         newUser.setTimingOfFertilityWindowNotifications("10:00");
         newUser.setTimingOfMenstruationStartNotifications("10:00");
-
+        newUser.setTimingOfGeneralRecommendations("10:00");
         // Установка количества дней до отправки уведомлений по умолчанию на 2
         newUser.setDaysBeforeFertilityWindowNotifications(2);
         newUser.setDaysBeforeMenstruationStartNotifications(2);

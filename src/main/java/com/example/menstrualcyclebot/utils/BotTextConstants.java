@@ -40,7 +40,7 @@ public class BotTextConstants {
     public static final String NO_COMPLETED_CYCLES_FOR_DELETION = "У вас нет завершённых циклов для удаления.";
     public static final String PROMPT_CYCLE_DELETION = "Введите номер цикла, который вы хотите удалить:";
     public static final String ERROR_GENERATING_CALENDAR = "Произошла ошибка при генерации календаря. Попробуйте снова позже.";
-    public static final String MESSAGE_BEFORE_CALENDAR = "Выберите день для получения информации о фазе цикла";
+    public static final String MESSAGE_BEFORE_CALENDAR = "Нажмите на ❓ для получения более подробной информации о фазах цикла.";
     public static final String ENTER_DATE_FORMAT_DD_MM_YYYY = "Введите дату в формате дд-мм-гггг):";
     public static final String ENTER_TIMEZONE_OFFSET = "Введите смещение часового пояса (например, +3 для Москвы):";
     public static final String HISTORICAL_CYCLE_DATA_SAVED = "Данные исторических циклов сохранены.";

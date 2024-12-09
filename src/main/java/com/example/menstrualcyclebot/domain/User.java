@@ -37,13 +37,15 @@ public class User {
     @Column(name = "time_zone")
     private ZoneId timeZone;
 
+    // General Recommendations
+    @Column(name = "timing_of_fertility_general_recommendations")
+    private String timingOfGeneralRecommendations;
+
     @Column(name = "physical_activity_enabled_notification", nullable = false)
     private boolean physicalActivityEnabled = true;
 
     @Column(name = "nutrition_enabled_notification", nullable = false)
     private boolean nutritionEnabled = true;
-
-
 
     @Column(name = "work_productivity_notification", nullable = false)
     private boolean workProductivityNotification = true;
@@ -60,12 +62,7 @@ public class User {
     @Column(name = "sex_notification", nullable = false)
     private boolean sexNotification= true;
 
-    @Column(name ="fertility_window_notification", nullable = false )
-    private boolean fertilityWindowNotification = true;
-
-    @Column(name ="menstruation_start_notification", nullable = false )
-    private boolean menstruationStartNotificationNotification = true;
-
+    // fertility_window
     @Column(name = "fertility_window_notification_enabled", nullable = false)
     private boolean fertilityWindowNotificationEnabled = true; // Fertility window notifications - boolean
 
@@ -75,6 +72,7 @@ public class User {
     @Column(name = "days_before_fertility_window_notifications")
     private int daysBeforeFertilityWindowNotifications;  // How many days before Fertility window notifications
 
+    // menstruation_start_notification
     @Column(name = "menstruation_start_notification_enabled", nullable = false)
     private boolean menstruationStartNotificationEnabled = true; // Menstruation start notifications - boolean
 

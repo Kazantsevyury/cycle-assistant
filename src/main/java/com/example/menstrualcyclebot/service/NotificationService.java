@@ -1,10 +1,14 @@
 package com.example.menstrualcyclebot.service;
 
+import com.example.menstrualcyclebot.domain.Cycle;
 import com.example.menstrualcyclebot.domain.User;
 import com.example.menstrualcyclebot.service.dbservices.UserService;
+import com.example.menstrualcyclebot.utils.recommendations.FertilityWindowRecommendations;
+import com.example.menstrualcyclebot.utils.recommendations.MenstruationStartRecommendations;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +17,8 @@ import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageRe
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -198,5 +204,80 @@ public class NotificationService {
                 .messageId(messageId)
                 .replyMarkup(markup)
                 .build();
+    }
+
+    @Scheduled(fixedRate = 600000) // Проверка каждые 10 минут
+    public void scheduleNotifications() {
+        LocalDate today = LocalDate.now();
+        LocalTime now = LocalTime.now();
+
+        List<User> users = userService.getAllUsers(); // Получить всех пользователей
+        for (User user : users) {
+            // Уведомления о фертильном окне
+            if (user.isFertilityWindowNotificationEnabled() &&
+                    user.getTimingOfFertilityWindowNotifications() != null &&
+                    now.equals(LocalTime.parse(user.getTimingOfFertilityWindowNotifications()))) {
+
+                String fertilityMessage = generateFertilityWindowNotification(user, today);
+                notifyUser(user.getChatId(), fertilityMessage);
+            }
+
+            // Уведомления о начале менструации
+            if (user.isMenstruationStartNotificationEnabled() &&
+                    user.getTimingOfMenstruationStartNotifications() != null &&
+                    now.equals(LocalTime.parse(user.getTimingOfMenstruationStartNotifications()))) {
+
+                String menstruationMessage = generateMenstruationStartNotification(user, today);
+                notifyUser(user.getChatId(), menstruationMessage);
+            }
+        }
+    }
+
+    /**
+     * Генерация уведомления о фертильном окне.
+     */
+    private String generateFertilityWindowNotification(User user, LocalDate today) {
+        Cycle currentCycle = getCurrentCycle(user, today);
+        if (currentCycle == null) {
+            return "Нет данных о текущем цикле.";
+        }
+
+        long dayOffset = calculateDayOffset(currentCycle, today);
+        return FertilityWindowRecommendations.DAYS_BEFORE_FERTILITY_WINDOW.getOrDefault((int) dayOffset,
+                FertilityWindowRecommendations.FERTILITY_WINDOW_DAYS.getOrDefault((int) dayOffset,
+                        "Нет рекомендаций для фертильного окна на этот день."));
+    }
+
+    /**
+     * Генерация уведомления о начале менструации.
+     */
+    private String generateMenstruationStartNotification(User user, LocalDate today) {
+        Cycle currentCycle = getCurrentCycle(user, today);
+        if (currentCycle == null) {
+            return "Нет данных о текущем цикле.";
+        }
+
+        long dayOffset = calculateDayOffset(currentCycle, today);
+        return MenstruationStartRecommendations.DAYS_BEFORE_MENSTRUATION.getOrDefault((int) dayOffset,
+                MenstruationStartRecommendations.MENSTRUATION_START_DAYS.getOrDefault((int) dayOffset,
+                        "Нет рекомендаций для начала менструации на этот день."));
+    }
+
+    /**
+     * Получение текущего цикла пользователя.
+     */
+    private Cycle getCurrentCycle(User user, LocalDate today) {
+        return user.getCycles().stream()
+                .filter(cycle -> !today.isBefore(cycle.getStartDate()) &&
+                        (cycle.getEndDate() == null || !today.isAfter(cycle.getEndDate())))
+                .findFirst()
+                .orElse(null);
+    }
+
+    /**
+     * Вычисление дня относительно начала цикла.
+     */
+    private long calculateDayOffset(Cycle cycle, LocalDate today) {
+        return today.toEpochDay() - cycle.getStartDate().toEpochDay();
     }
 }

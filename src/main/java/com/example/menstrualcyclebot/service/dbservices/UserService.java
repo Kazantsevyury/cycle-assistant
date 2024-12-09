@@ -16,6 +16,10 @@ import java.util.Optional;
 public class UserService {
 
     private final UserRepository userRepository;
+    @Transactional(readOnly = true)
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
+    }
 
     @Transactional
     public void updateNotificationSettings(Long chatId, User updatedSettings) {
