@@ -478,6 +478,14 @@ public class Bot extends TelegramLongPollingBot {
         log.info("Received callback: {} for chatId: {}, messageId: {}", callbackData, chatId, messageId);
 
         try {
+            if (callbackData.equals("info_question_mark") || callbackData.equals("info_question_mark_monday")) {
+                log.info("Handling info_question_mark callback for chatId: {}", chatId);
+
+                // Отправляем список эмоджи с описаниями
+                String emojiList = calendarService.generateEmojiList();
+                sendMessage(chatId, emojiList);
+            }
+
             if (callbackData.equals(SETTING_UP_FERTILE_WINDOW_RECOMMENDATIONS)) {
                 log.info("Handling SETTING_UP_FERTILE_WINDOW_RECOMMENDATIONS for chatId: {}", chatId);
                 EditMessageReplyMarkup replyMarkup = notificationService.createFertilityWindowMenu(chatId, messageId);

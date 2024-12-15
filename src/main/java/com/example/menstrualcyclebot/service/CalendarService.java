@@ -119,6 +119,7 @@ public class CalendarService {
             InlineKeyboardButton button = lastRow.get(i);
             if (button.getText().trim().isEmpty()) {
                 button.setText(BotTextConstants.QUESTION_MARK_EMOJI);
+                button.setCallbackData("info_question_mark");
                 addedQuestionMark = true;
                 break;
             }
@@ -133,6 +134,7 @@ public class CalendarService {
                     // В строке с днями найти понедельник
                     InlineKeyboardButton firstMondayButton = row.get(0); // Первый столбец - "Пн"
                     firstMondayButton.setText(firstMondayButton.getText() + " " + BotTextConstants.QUESTION_MARK_EMOJI);
+                    firstMondayButton.setCallbackData("info_question_mark_monday");
                     break;
                 }
             }
@@ -300,4 +302,15 @@ public class CalendarService {
         button.setCallbackData("navigate:" + year + ":" + month);
         return button;
     }
+
+    public String generateEmojiList() {
+        return "Список обозначений фаз цикла:\n\n" +
+                BotTextConstants.MENSTRUATION_EMOJI + " Менструальная фаза\n" +
+                BotTextConstants.FOLLICULAR_PHASE_EMOJI + " Фолликулярная фаза\n" +
+                BotTextConstants.OVULATION_EMOJI + " Фаза овуляции\n" +
+                BotTextConstants.LUTEAL_PHASE_EMOJI + " Лютеиновая фаза\n" +
+                BotTextConstants.FERTILE_WINDOW_EMOJI + " Фертильное окно\n" +
+                BotTextConstants.CYCLE_DELAY_EMOJI + " Задержка цикла";
+    }
+
 }
