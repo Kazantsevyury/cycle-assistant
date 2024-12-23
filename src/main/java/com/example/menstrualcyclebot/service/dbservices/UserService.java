@@ -92,4 +92,12 @@ public class UserService {
     public boolean existsById(Long chatId) {
         return userRepository.existsById(chatId);
     }
+
+    public List<Long> getAllUserChatIds() {
+        return userRepository.findAllChatIds();
+    }
+    public List<User> findAllUsersWithGeneralRecommendations() {
+        return userRepository.findAllByTimingOfGeneralRecommendationsIsNotNull();
+    }
+
 }
