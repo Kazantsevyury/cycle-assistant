@@ -1,12 +1,12 @@
 package com.example.menstrualcyclebot.presentation;
 import static com.example.menstrualcyclebot.utils.BotTextConstants.*;
 
+import com.example.menstrualcyclebot.domain.CallbackType;
 import com.example.menstrualcyclebot.domain.Cycle;
 import com.example.menstrualcyclebot.domain.CycleStatus;
 import com.example.menstrualcyclebot.domain.User;
 import com.example.menstrualcyclebot.service.CalendarService;
 import com.example.menstrualcyclebot.service.NotificationService;
-import com.example.menstrualcyclebot.service.StatisticsService;
 import com.example.menstrualcyclebot.service.UserEditService;
 import com.example.menstrualcyclebot.service.dbservices.*;
 import com.example.menstrualcyclebot.state.*;
@@ -48,7 +48,6 @@ public class Bot extends TelegramLongPollingBot {
     private final DatabaseService databaseService;
     private final CycleCalculator cycleCalculator;
     public final UserEditService userEditService;
-    private final StatisticsService statisticsService;
     private final CycleRecalculationService cycleRecalculationService;
     private final Map<Long, UserStateHandler> userStates = new HashMap<>();
     private final Map<Long, Cycle> partialCycleData = new HashMap<>();
@@ -64,7 +63,7 @@ public class Bot extends TelegramLongPollingBot {
             DatabaseService databaseService,
             CycleCalculator cycleCalculator,
             UserEditService userEditService,
-            StatisticsService statisticsService, CycleRecalculationService cycleRecalculationService, NotificationService notificationService) {
+             CycleRecalculationService cycleRecalculationService, NotificationService notificationService) {
         this.botToken = botToken;
         this.botUsername = botUsername;
         this.userService = userService;
@@ -74,21 +73,12 @@ public class Bot extends TelegramLongPollingBot {
         this.databaseService = databaseService;
         this.cycleCalculator = cycleCalculator;
         this.userEditService = userEditService;
-        this.statisticsService = statisticsService;
         this.cycleRecalculationService = cycleRecalculationService;
         this.notificationService = notificationService;
     }
 
     @Override
     public void onUpdateReceived(Update update) {
-        if (update.hasMessage() && update.getMessage().hasText()) {
-            handleIncomingMessage(update);
-        } else if (update.hasCallbackQuery()) {
-            handleCallback(update.getCallbackQuery(), update);  // Передаем update вместе с callbackQuery
-        }
-    }
-
-    public void processUpdate(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
             handleIncomingMessage(update);
         } else if (update.hasCallbackQuery()) {
@@ -332,8 +322,6 @@ public class Bot extends TelegramLongPollingBot {
                 messageText.equals(FINISH_DATA_ENTRY) ||
                 messageText.equals(DELETE_CYCLE) ||
                 messageText.equals("i") ||
-                messageText.equals(COMMAND_NOTIFICATIONS_SETTINGS) ||
-
                 messageText.equals(ENTER_ANOTHER_CYCLE) ||
                 messageText.equals(CONFIRM_DELETE_CYCLE);
 
@@ -469,7 +457,6 @@ public class Bot extends TelegramLongPollingBot {
 
 
 
-
     public void handleCallback(CallbackQuery callbackQuery, Update update) {
         String callbackData = callbackQuery.getData();
         long chatId = callbackQuery.getMessage().getChatId();
@@ -478,119 +465,266 @@ public class Bot extends TelegramLongPollingBot {
         log.info("Received callback: {} for chatId: {}, messageId: {}", callbackData, chatId, messageId);
 
         try {
-            if (callbackData.equals("info_question_mark") || callbackData.equals("info_question_mark_monday")) {
-                log.info("Handling info_question_mark callback for chatId: {}", chatId);
+            // 1) Определяем «тип» коллбэка
+            CallbackType callbackType = getCallbackType(callbackData);
 
-                // Отправляем список эмоджи с описаниями
-                String emojiList = calendarService.generateEmojiList();
-                sendMessage(chatId, emojiList);
+            // 2) В зависимости от «типа» коллбэка
+            switch (callbackType) {
+                case INFO:
+                    handleInfoCallback(callbackQuery, update);
+                    break;
+                case NOTIFICATION:
+                    handleNotificationCallback(callbackQuery, update);
+                    break;
+                case CALENDAR:
+                    handleCalendarCallback(callbackQuery, update);
+                    break;
+                case USER_DATA:
+                    handleUserDataCallback(callbackQuery, update);
+                    break;
+                case USER_SETTINGS:
+                    handleUserSettingsCallback(callbackQuery, update);
+                    break;
+                default:
+                    handleUnknownCallback(callbackQuery);
+                    break;
             }
 
-            if (callbackData.equals(SETTING_UP_FERTILE_WINDOW_RECOMMENDATIONS)) {
-                log.info("Handling SETTING_UP_FERTILE_WINDOW_RECOMMENDATIONS for chatId: {}", chatId);
-                EditMessageReplyMarkup replyMarkup = notificationService.createFertilityWindowMenu(chatId, messageId);
-                execute(replyMarkup);
-            } else if (isNotificationCallback(callbackData)) {
-                log.info("Handling notification callback: {} for chatId: {}", callbackData, chatId);
-                notificationService.toggleNotificationSetting(chatId, callbackData);
-
-                EditMessageReplyMarkup editMarkup = notificationService.createNotificationSettingsMenu(chatId, messageId);
-                execute(editMarkup);
-            } else if (callbackData.startsWith("fertility")) {
-                log.info("Handling fertility callback: {} for chatId: {}", callbackData, chatId);
-                handleFertilityCallback(callbackData, chatId);
-            } else {
-                log.info("Handling general callback: {} for chatId: {}", callbackData, chatId);
-                switch (callbackData.split(":")[0]) {
-                    case "navigate":
-                        String[] data = callbackData.split(":");
-                        int year = Integer.parseInt(data[1]);
-                        int month = Integer.parseInt(data[2]);
-
-                        log.info("Navigating calendar to year: {}, month: {} for chatId: {}", year, month, chatId);
-
-                        EditMessageText editMessage = new EditMessageText();
-                        editMessage.setChatId(callbackQuery.getMessage().getChatId().toString());
-                        editMessage.setMessageId(callbackQuery.getMessage().getMessageId());
-                        editMessage.setText(MESSAGE_BEFORE_CALENDAR);
-                        editMessage.setReplyMarkup(calendarService.getCalendar(year, month, chatId, update));
-
-                        execute(editMessage);
-                        break;
-
-                    case "undo_cycle":
-                        Long cycleId = Long.parseLong(callbackData.split("_")[2]);
-                        log.info("Undoing cycle with id: {} for chatId: {}", cycleId, chatId);
-
-                        Optional<Cycle> cycleOptional = cycleService.findById(cycleId);
-                        if (cycleOptional.isPresent()) {
-                            cycleService.deleteCycleById(cycleId);
-                            sendMessageWithKeyboard(chatId, CYCLE_CANCELLED_SUCCESSFULLY, createMenuKeyboard());
-                            log.info("Cycle with id: {} successfully canceled for chatId: {}", cycleId, chatId);
-                        } else {
-                            sendMessage(chatId, ERROR_CYCLE_NOT_FOUND);
-                            log.warn("Cycle with id: {} not found for cancellation in chatId: {}", cycleId, chatId);
-                        }
-                        break;
-
-                    case "new_cycle":
-                        log.info("Handling new cycle creation for chatId: {}", chatId);
-                        handleNewCycle(chatId);
-                        break;
-
-                    case "to_Notifications_settings":
-                    case BACK_TO_NOTIFICATION_SETTING:
-                        log.info("Navigating to notification settings for chatId: {}", chatId);
-                        SendMessage notificationMenu = notificationService.createMainNotificationSettingsMenu(chatId);
-                        execute(notificationMenu);
-                        break;
-
-                    case "edit_salutation":
-                        log.info("Entering salutation edit mode for chatId: {}", chatId);
-                        userStates.put(chatId, new AwaitingSalutationState());
-                        sendMessage(chatId, "Введите новое обращение:");
-                        break;
-
-                    case "edit_birth_date":
-                        log.info("Entering birth date edit mode for chatId: {}", chatId);
-                        userStates.put(chatId, new AwaitingBirthdateState());
-                        sendMessage(chatId, ENTER_DATE_FORMAT_DD_MM_YYYY);
-                        break;
-
-                    case "edit_time_zone":
-                        log.info("Entering time zone edit mode for chatId: {}", chatId);
-                        userStates.put(chatId, new AwaitingTimezoneState());
-                        sendMessage(chatId, ENTER_TIMEZONE_OFFSET);
-                        break;
-
-                    case SETTING_UP_GENERAL_RECOMMENDATIONS:
-                        log.info("Handling general recommendations settings for chatId: {}", chatId);
-                        EditMessageReplyMarkup editMessageReplyMarkup = notificationService.createNotificationSettingsMenu(chatId, messageId);
-                        execute(editMessageReplyMarkup);
-                        break;
-
-                    case BACK_TO_USER_SETTINGS_MENU:
-                        log.info("Navigating back to user settings menu for chatId: {}", chatId);
-                        handleProfileSettings(chatId);
-                        break;
-
-                    case "back_to_main_menu":
-                        log.info("Navigating back to main menu for chatId: {}", chatId);
-                        sendMessageWithKeyboard(chatId, MAIN_MENU, createMenuKeyboard());
-                        userStates.put(chatId, new NoneState());
-                        break;
-
-                    default:
-                        log.warn("Unknown callback received: {} for chatId: {}", callbackData, chatId);
-                        sendMessage(chatId, ERROR_TRY_AGAIN_LATER);
-                        break;
-                }
-            }
         } catch (Exception e) {
-            log.error("Error processing callback for chatId: {}, messageId: {}, callbackData: {}", chatId, messageId, callbackData, e);
-            sendMessage(chatId, ERROR_TRY_AGAIN_LATER);
+            log.error("Error processing callback for chatId: {}, messageId: {}, callbackData: {}",
+                    chatId, messageId, callbackData, e);
         }
     }
+
+    /**
+     * Определяем к какой «категории» относится callbackData.
+     */
+    private CallbackType getCallbackType(String callbackData) {
+        // 1) INFO
+        if ("info_question_mark".equals(callbackData) || "info_question_mark_monday".equals(callbackData)) {
+            return CallbackType.INFO;
+        }
+
+        // 2) NOTIFICATION
+        // - Конкретная константа: SETTING_UP_FERTILE_WINDOW_RECOMMENDATIONS
+        // - Вызов вашего метода isNotificationCallback(callbackData)
+        // - Префикс "fertility"
+        if (SETTING_UP_FERTILE_WINDOW_RECOMMENDATIONS.equals(callbackData)
+                || isNotificationCallback(callbackData)
+                || callbackData.startsWith("fertility")) {
+            return CallbackType.NOTIFICATION;
+        }
+
+        // 3) CALENDAR
+        // - "navigate:..." => переход по календарю
+        // - "undo_cycle:..." => отмена цикла
+        // - "new_cycle" => создание цикла
+        //   В исходном коде у вас "navigate" и "undo_cycle"/"new_cycle" без двоеточий, но давайте придержимся ключа:
+        String firstPart = callbackData.split(":")[0]; // например "navigate" или "undo_cycle"
+        if ("navigate".equals(firstPart) || "undo_cycle".equals(firstPart) || "new_cycle".equals(firstPart)) {
+            return CallbackType.CALENDAR;
+        }
+
+        // 4) USER_DATA
+        // - "edit_salutation"
+        // - "edit_birth_date"
+        // - "edit_time_zone"
+        if ("edit_salutation".equals(firstPart)
+                || "edit_birth_date".equals(firstPart)
+                || "edit_time_zone".equals(firstPart)) {
+            return CallbackType.USER_DATA;
+        }
+
+        // 5) USER_SETTINGS
+        // - COMMAND_NOTIFICATIONS_SETTINGS
+        // - BACK_TO_NOTIFICATION_SETTING
+        // - SETTING_UP_GENERAL_RECOMMENDATIONS
+        // - BACK_TO_USER_SETTINGS_MENU
+        // - "back_to_main_menu"
+        // (Учитывая, что некоторые из них — целые строки, некоторые — часть префикса)
+        if (COMMAND_NOTIFICATIONS_SETTINGS.equals(firstPart)
+                || BACK_TO_NOTIFICATION_SETTING.equals(firstPart)
+                || SETTING_UP_GENERAL_RECOMMENDATIONS.equals(callbackData)
+                || BACK_TO_USER_SETTINGS_MENU.equals(callbackData)
+                || "back_to_main_menu".equals(firstPart)) {
+            return CallbackType.USER_SETTINGS;
+        }
+
+        // Если ничего не подошло — UNKNOWN
+        return CallbackType.UNKNOWN;
+    }
+
+//------------------------------------------//
+//      ОБРАБОТЧИКИ РАЗНЫХ ТИПОВ КОЛЛБЭКОВ  //
+//------------------------------------------//
+
+    /** INFO */
+    private void handleInfoCallback(CallbackQuery callbackQuery, Update update) throws TelegramApiException {
+        long chatId = callbackQuery.getMessage().getChatId();
+        log.info("Handling info_question_mark callback for chatId: {}", chatId);
+
+        // Отправляем список эмоджи с описаниями
+        String emojiList = calendarService.generateEmojiList();
+        sendMessage(chatId, emojiList);
+    }
+
+    /** NOTIFICATION */
+    private void handleNotificationCallback(CallbackQuery callbackQuery, Update update) throws TelegramApiException {
+        String callbackData = callbackQuery.getData();
+        long chatId = callbackQuery.getMessage().getChatId();
+        Integer messageId = callbackQuery.getMessage().getMessageId();
+
+        if (SETTING_UP_FERTILE_WINDOW_RECOMMENDATIONS.equals(callbackData)) {
+            log.info("Handling SETTING_UP_FERTILE_WINDOW_RECOMMENDATIONS for chatId: {}", chatId);
+            EditMessageReplyMarkup replyMarkup = notificationService.createFertilityWindowMenu(chatId, messageId);
+            execute(replyMarkup);
+        }
+        else if (SETTING_UP_CYCLE_DELAY_RECOMMENDATIONS.equals(callbackData)) {
+            log.info("Handling SETTING_UP_CYCLE_DELAY_RECOMMENDATIONS for chatId: {}", chatId);
+            EditMessageReplyMarkup replyMarkup = notificationService.createMenstruationWindowMenu(chatId, messageId);
+            execute(replyMarkup);
+        }
+        else if (isNotificationCallback(callbackData)) {
+            log.info("Handling notification callback: {} for chatId: {}", callbackData, chatId);
+            notificationService.toggleNotificationSetting(chatId, callbackData);
+
+            EditMessageReplyMarkup editMarkup =
+                    notificationService.createGeneralNotificationSettingsMenu(chatId, messageId);
+            execute(editMarkup);
+        }
+        else if (callbackData.startsWith("fertility")) {
+            log.info("Handling fertility callback: {} for chatId: {}", callbackData, chatId);
+            handleFertilityCallback(callbackData, chatId);
+        }
+    }
+
+    /** CALENDAR */
+    private void handleCalendarCallback(CallbackQuery callbackQuery, Update update) throws TelegramApiException {
+        String callbackData = callbackQuery.getData();
+        long chatId = callbackQuery.getMessage().getChatId();
+        Integer messageId = callbackQuery.getMessage().getMessageId();
+
+        String firstPart = callbackData.split(":")[0];
+        switch (firstPart) {
+            case "navigate": {
+                String[] data = callbackData.split(":");
+                int year = Integer.parseInt(data[1]);
+                int month = Integer.parseInt(data[2]);
+
+                log.info("Navigating calendar to year: {}, month: {} for chatId: {}", year, month, chatId);
+
+                EditMessageText editMessage = new EditMessageText();
+                editMessage.setChatId(String.valueOf(chatId));
+                editMessage.setMessageId(messageId);
+                editMessage.setText(MESSAGE_BEFORE_CALENDAR);
+                editMessage.setReplyMarkup(calendarService.getCalendar(year, month, chatId, update));
+                execute(editMessage);
+                break;
+            }
+            case "undo_cycle": {
+                Long cycleId = Long.parseLong(callbackData.split("_")[2]);
+                log.info("Undoing cycle with id: {} for chatId: {}", cycleId, chatId);
+
+                Optional<Cycle> cycleOptional = cycleService.findById(cycleId);
+                if (cycleOptional.isPresent()) {
+                    cycleService.deleteCycleById(cycleId);
+                    sendMessageWithKeyboard(chatId, CYCLE_CANCELLED_SUCCESSFULLY, createMenuKeyboard());
+                    log.info("Cycle with id: {} successfully canceled for chatId: {}", cycleId, chatId);
+                } else {
+                    sendMessage(chatId, ERROR_CYCLE_NOT_FOUND);
+                    log.warn("Cycle with id: {} not found for cancellation in chatId: {}", cycleId, chatId);
+                }
+                break;
+            }
+            case "new_cycle": {
+                log.info("Handling new cycle creation for chatId: {}", chatId);
+                handleNewCycle(chatId);
+                break;
+            }
+            default:
+                log.warn("Unknown calendar callback: {} for chatId: {}", callbackData, chatId);
+                break;
+        }
+    }
+
+    /** USER_DATA */
+    private void handleUserDataCallback(CallbackQuery callbackQuery, Update update) throws TelegramApiException {
+        String callbackData = callbackQuery.getData();
+        long chatId = callbackQuery.getMessage().getChatId();
+        String firstPart = callbackData.split(":")[0];
+
+        switch (firstPart) {
+            case "edit_salutation": {
+                log.info("Entering salutation edit mode for chatId: {}", chatId);
+                userStates.put(chatId, new AwaitingSalutationState());
+                sendMessage(chatId, "Введите новое обращение:");
+                break;
+            }
+            case "edit_birth_date": {
+                log.info("Entering birth date edit mode for chatId: {}", chatId);
+                userStates.put(chatId, new AwaitingBirthdateState());
+                sendMessage(chatId, ENTER_DATE_FORMAT_DD_MM_YYYY);
+                break;
+            }
+            case "edit_time_zone": {
+                log.info("Entering time zone edit mode for chatId: {}", chatId);
+                userStates.put(chatId, new AwaitingTimezoneState());
+                sendMessage(chatId, ENTER_TIMEZONE_OFFSET);
+                break;
+            }
+            default:
+                log.warn("Unknown user data callback: {} for chatId: {}", callbackData, chatId);
+                break;
+        }
+    }
+
+    /** USER_SETTINGS */
+    private void handleUserSettingsCallback(CallbackQuery callbackQuery, Update update) throws TelegramApiException {
+        String callbackData = callbackQuery.getData();
+        long chatId = callbackQuery.getMessage().getChatId();
+        Integer messageId = callbackQuery.getMessage().getMessageId();
+
+        // Можно также сделать switch или if-else по callbackData
+        if (SETTING_UP_GENERAL_RECOMMENDATIONS.equals(callbackData)) {
+            log.info("Handling general recommendations settings for chatId: {}", chatId);
+            EditMessageReplyMarkup editMessageReplyMarkup =
+                    notificationService.createGeneralNotificationSettingsMenu(chatId, messageId);
+            execute(editMessageReplyMarkup);
+        }
+        else if (BACK_TO_USER_SETTINGS_MENU.equals(callbackData)) {
+            log.info("Navigating back to user settings menu for chatId: {}", chatId);
+            handleProfileSettings(chatId);
+        }
+        else if ("back_to_main_menu".equals(callbackData.split(":")[0])) {
+            log.info("Navigating back to main menu for chatId: {}", chatId);
+            sendMessageWithKeyboard(chatId, MAIN_MENU, createMenuKeyboard());
+            userStates.put(chatId, new NoneState());
+        }
+        else {
+            // В исходном коде командой для открытия настроек уведомлений
+            // были COMMAND_NOTIFICATIONS_SETTINGS и BACK_TO_NOTIFICATION_SETTING
+            String firstPart = callbackData.split(":")[0];
+            if (COMMAND_NOTIFICATIONS_SETTINGS.equals(firstPart)
+                    || BACK_TO_NOTIFICATION_SETTING.equals(firstPart)) {
+                log.info("Navigating to notification settings for chatId: {}", chatId);
+                SendMessage notificationMenu = notificationService.createMainNotificationSettingsMenu(chatId);
+                execute(notificationMenu);
+            } else {
+                log.warn("Unknown user settings callback: {} for chatId: {}", callbackData, chatId);
+            }
+        }
+    }
+
+    /** UNKNOWN */
+    private void handleUnknownCallback(CallbackQuery callbackQuery) throws TelegramApiException {
+        String callbackData = callbackQuery.getData();
+        long chatId = callbackQuery.getMessage().getChatId();
+
+        log.warn("Unknown callback received: {} for chatId: {}", callbackData, chatId);
+        // При желании можно отправить пользователю сообщение об ошибке
+        // sendMessage(chatId, "Неизвестная команда. Попробуйте снова.");
+    }
+
 
     private void handleFertilityCallback(String callbackData, Long chatId) {
         log.info("Processing fertility callback: {} for chatId: {}", callbackData, chatId);
@@ -698,6 +832,15 @@ public class Bot extends TelegramLongPollingBot {
                 || callbackData.equals("RELATIONSHIPS_COMMUNICATION")
                 || callbackData.equals("CARE")
                 || callbackData.equals("EMOTIONAL_WELLBEING")
-                || callbackData.equals("SEX");
+                || callbackData.equals("SEX")
+                || callbackData.equals("edit_timing_general")
+                || callbackData.equals("edit_timing_fertility")
+                || callbackData.equals("toggle_fertility")
+                || callbackData.equals("edit_days_before_fertility")
+                || callbackData.equals(SETTING_UP_CYCLE_DELAY_RECOMMENDATIONS)
+                || callbackData.equals("toggle_fertility")
+                || callbackData.equals("edit_timing_fertility")
+                || callbackData.equals("edit_days_before_fertility");
+
     }
 }
