@@ -36,7 +36,6 @@ public class BotTextConstants {
     public static final String CYCLE_UPDATED = "Ваш цикл успешно обновлен.";
     public static final String RECOMMENDATION_REQUEST = "Выберите тип ввода данных:";
     public static final String PROFILE_SETTINGS_TEXT = "Настройки профиля: ";
-    public static final String ERROR_TRY_AGAIN_LATER = "Произошла ошибка. Попробуйте позже.";
     public static final String NO_COMPLETED_CYCLES_FOR_DELETION = "У вас нет завершённых циклов для удаления.";
     public static final String PROMPT_CYCLE_DELETION = "Введите номер цикла, который вы хотите удалить:";
     public static final String ERROR_GENERATING_CALENDAR = "Произошла ошибка при генерации календаря. Попробуйте снова позже.";

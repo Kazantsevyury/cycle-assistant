@@ -65,7 +65,7 @@ public class NotificationService {
         return notificationType + (isEnabled ? " ✅" : " ❌");
     }
 
-    public EditMessageReplyMarkup createNotificationSettingsMenu(Long chatId, Integer messageId) {
+    public EditMessageReplyMarkup createGeneralNotificationSettingsMenu(Long chatId, Integer messageId) {
         log.info("Creating notification settings menu for chatId: {}, messageId: {}", chatId, messageId);
 
         User user = userService.findById(chatId).orElseThrow(() -> {
@@ -85,7 +85,10 @@ public class NotificationService {
         buttons.add(List.of(createButton(getNotificationButtonText(NOTIFICATION_TYPE_CARE, user.isCareNotification()), "CARE")));
         buttons.add(List.of(createButton(getNotificationButtonText(NOTIFICATION_TYPE_EMOTIONAL_WELLBEING, user.isEmotionalWellbeingNotification()), "EMOTIONAL_WELLBEING")));
         buttons.add(List.of(createButton(getNotificationButtonText(NOTIFICATION_TYPE_SEX, user.isSexNotification()), "SEX")));
-
+        buttons.add(List.of(
+                createButton("Время отправки", "NO_ACTION"),
+                createButton(user.getTimingOfGeneralRecommendations(), "edit_timing_general")
+        ));
         buttons.add(List.of(createButton(BACK_TO_NOTIFICATION_SETTING, BACK_TO_NOTIFICATION_SETTING)));
 
         markup.setKeyboard(buttons);
@@ -179,7 +182,7 @@ public class NotificationService {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> buttons = new ArrayList<>();
 
-        String statusText = user.isFertilityWindowNotificationEnabled() ? "✅" : "❌";
+        String statusText = user.isMenstruationStartNotificationEnabled() ? "✅" : "❌";
         buttons.add(List.of(
                 createButton("Вкл/Выкл", "NO_ACTION"),
                 createButton(statusText, "toggle_fertility")
@@ -187,12 +190,12 @@ public class NotificationService {
 
         buttons.add(List.of(
                 createButton("Время отправки", "NO_ACTION"),
-                createButton(user.getTimingOfFertilityWindowNotifications(), "edit_timing_fertility")
+                createButton(user.getTimingOfMenstruationStartNotifications(), "edit_timing_fertility")
         ));
 
         buttons.add(List.of(
                 createButton("Дней до", "NO_ACTION"),
-                createButton(String.valueOf(user.getDaysBeforeFertilityWindowNotifications()), "edit_days_before_fertility")
+                createButton(String.valueOf(user.getDaysBeforeMenstruationStartNotifications()), "edit_days_before_fertility")
         ));
 
         buttons.add(List.of(createButton(BACK_BUTTON, BACK_TO_NOTIFICATION_SETTING)));
@@ -206,6 +209,43 @@ public class NotificationService {
                 .build();
     }
 
+    public EditMessageReplyMarkup createMenstruationWindowMenu(Long chatId, Integer messageId) {
+        log.info("Creating fertility window menu for chatId: {}, messageId: {}", chatId, messageId);
+
+        User user = userService.findById(chatId).orElseThrow(() -> {
+            log.error("User not found for chatId: {}", chatId);
+            return new IllegalArgumentException("User not found");
+        });
+
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> buttons = new ArrayList<>();
+
+        String statusText = user.isFertilityWindowNotificationEnabled() ? "✅" : "❌";
+        buttons.add(List.of(
+                createButton("Вкл/Выкл", "NO_ACTION"),
+                createButton(statusText, "toggle_menstruation")
+        ));
+
+        buttons.add(List.of(
+                createButton("Время отправки", "NO_ACTION"),
+                createButton(user.getTimingOfFertilityWindowNotifications(), "edit_timing_menstruation")
+        ));
+
+        buttons.add(List.of(
+                createButton("Дней до", "NO_ACTION"),
+                createButton(String.valueOf(user.getDaysBeforeFertilityWindowNotifications()), "edit_days_before_menstruation")
+        ));
+
+        buttons.add(List.of(createButton(BACK_BUTTON, BACK_TO_NOTIFICATION_SETTING)));
+
+        markup.setKeyboard(buttons);
+
+        return EditMessageReplyMarkup.builder()
+                .chatId(String.valueOf(chatId))
+                .messageId(messageId)
+                .replyMarkup(markup)
+                .build();
+    }
     @Scheduled(fixedRate = 600000) // Проверка каждые 10 минут
     public void scheduleNotifications() {
         LocalDate today = LocalDate.now();
