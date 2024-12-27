@@ -81,4 +81,31 @@ public class User {
 
     @Column(name = "days_before_menstruation_start_notifications")
     private int daysBeforeMenstruationStartNotifications;  // How many days before Menstruation start notifications
+    @Override
+    public String toString() {
+        return "User{" +
+                "chatId=" + chatId +
+                ", username='" + username + '\'' +
+                ", setupComplete=" + setupComplete +
+                ", name='" + name + '\'' +
+                ", salutation='" + salutation + '\'' +
+                ", birthDate=" + birthDate +
+                ", timeZone=" + timeZone +
+                ", physicalActivityEnabled=" + physicalActivityEnabled +
+                ", nutritionEnabled=" + nutritionEnabled +
+                ", workProductivityNotification=" + workProductivityNotification +
+                ", relationshipsCommunicationNotification=" + relationshipsCommunicationNotification +
+                ", careNotification=" + careNotification +
+                ", emotionalWellbeingNotification=" + emotionalWellbeingNotification +
+                ", sexNotification=" + sexNotification +
+                ", fertilityWindowNotificationEnabled=" + fertilityWindowNotificationEnabled +
+                ", timingOfFertilityWindowNotifications='" + timingOfFertilityWindowNotifications + '\'' +
+                ", daysBeforeFertilityWindowNotifications=" + daysBeforeFertilityWindowNotifications +
+                ", menstruationStartNotificationEnabled=" + menstruationStartNotificationEnabled +
+                ", timingOfMenstruationStartNotifications='" + timingOfMenstruationStartNotifications + '\'' +
+                ", daysBeforeMenstruationStartNotifications=" + daysBeforeMenstruationStartNotifications +
+                ", cyclesCount=" + (cycles != null ? cycles.size() : "null") +
+                '}';
+    }
+
 }

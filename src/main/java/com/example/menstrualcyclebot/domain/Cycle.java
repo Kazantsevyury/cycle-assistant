@@ -70,4 +70,29 @@ public class Cycle {
 
     @Column(name = "notes") // Дополнительные заметки
     private String notes;
+    @Override
+    public String toString() {
+        return "Cycle{" +
+                "cycleId=" + cycleId +
+                ", startDate=" + startDate +
+                ", cycleLength=" + cycleLength +
+                ", periodLength=" + periodLength +
+                ", ovulationDay=" + ovulationDay +
+                ", fertileWindowStartDay=" + fertileWindowStartDay +
+                ", fertileWindowEndDay=" + fertileWindowEndDay +
+                ", ovulationDate=" + ovulationDate +
+                ", follicularPhaseStart=" + follicularPhaseStart +
+                ", follicularPhaseEnd=" + follicularPhaseEnd +
+                ", lutealPhaseStart=" + lutealPhaseStart +
+                ", lutealPhaseEnd=" + lutealPhaseEnd +
+                ", endDate=" + endDate +
+                ", delayDays=" + delayDays +
+                ", status=" + status +
+                ", expectedEndDate=" + expectedEndDate +
+                ", isExtended=" + isExtended +
+                ", notes='" + notes + '\'' +
+                ", userId=" + (user != null ? user.getChatId() : "null") +
+                '}';
+    }
+
 }
