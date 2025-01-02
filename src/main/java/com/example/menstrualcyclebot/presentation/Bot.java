@@ -85,7 +85,6 @@ public class Bot extends TelegramLongPollingBot {
             handleCallback(update.getCallbackQuery(), update);  // Передаем update вместе с callbackQuery
         }
     }
-
     public void handleIncomingMessage(Update update) {
         long chatId = update.getMessage().getChatId();
         String messageText = update.getMessage().getText();
@@ -95,133 +94,101 @@ public class Bot extends TelegramLongPollingBot {
                 partialCycleData.remove(chatId);
                 userStates.put(chatId, new NoneState());
 
-                switch (messageText) {
-                    case COMMAND_START:
-                        handleStartCommand(chatId, update);
-                        break;
-                    case COMMAND_ENTER_DATA:
-                        sendMessageWithKeyboard(chatId, RECOMMENDATION_REQUEST, createDataEntryChoiceKeyboard());
-                        break;
-                    case ENTER_HISTORICAL_DATA:
-                        handleHistoricalCycleData(chatId);
-                        break;
-                    case FINISH_DATA_ENTRY:
-                        sendMessageWithKeyboard(chatId,HISTORICAL_CYCLE_DATA_SAVED,createMenuKeyboard());
-                        break;
-                    case COMMAND_PROFILE_SETTINGS:
-                        handleProfileSettings(chatId);
-                        break;
-                    case CURRENT_CYCLE_DATA:
-                        handleActiveCycleDataEntry(chatId);
-                        break;
-                    case COMMAND_NEW_CYCLE:
-                        handleNewCycle(chatId);
-                        break;
-                    case NOTIFICATION_TYPE_SEX:
+                Map<String, Runnable> commandHandlers = new HashMap<>();
 
-                    case "r":
-                        handleRecalculationCommand(chatId);
-                        break;
+                commandHandlers.put(COMMAND_START, () -> handleStartCommand(chatId, update));
+                commandHandlers.put(COMMAND_ENTER_DATA, () -> sendMessageWithKeyboard(chatId, RECOMMENDATION_REQUEST, createDataEntryChoiceKeyboard()));
+                commandHandlers.put(ENTER_HISTORICAL_DATA, () -> handleHistoricalCycleData(chatId));
+                commandHandlers.put(FINISH_DATA_ENTRY, () -> sendMessageWithKeyboard(chatId, HISTORICAL_CYCLE_DATA_SAVED, createMenuKeyboard()));
+                commandHandlers.put(COMMAND_PROFILE_SETTINGS, () -> handleProfileSettings(chatId));
+                commandHandlers.put(CURRENT_CYCLE_DATA, () -> handleActiveCycleDataEntry(chatId));
+                commandHandlers.put(COMMAND_NEW_CYCLE, () -> handleNewCycle(chatId));
+                commandHandlers.put(NOTIFICATION_TYPE_SEX, () -> handleRecalculationCommand(chatId));
+                commandHandlers.put("r", () -> handleRecalculationCommand(chatId));
+                commandHandlers.put(COMMAND_CALENDAR, () -> handleCalendar(chatId, update));
+                commandHandlers.put("i", () -> handleCompletedCycles(chatId));
+                commandHandlers.put(COMMAND_CURRENT_CYCLE_DAY, () -> handleCurrentDay(chatId));
+                commandHandlers.put(ENTER_ANOTHER_CYCLE, () -> handleHistoricalCycleData(chatId));
+                commandHandlers.put(DELETE_CYCLE, () -> promptCycleDeletion(chatId));
+                commandHandlers.put("d", () -> deleteAllData(chatId));
+                commandHandlers.put(BACK, () -> sendMessageWithKeyboard(chatId, SELECT_COMMAND, createMenuKeyboard()));
+                commandHandlers.put(CONFIRM_DELETE_CYCLE, () -> handleDeleteCycle(chatId));
 
-
-                    case COMMAND_CALENDAR:
-                        handleCalendar(chatId,update);
-                        break;
-
-                    case "i":
-                        List<Cycle> cycles = userService.findUserCyclesByChatId(chatId);
-
-                        // Формируем сообщение со списком циклов
-                        String cyclesListMessage;
-                        if (cycles.isEmpty()) {
-                            cyclesListMessage = NO_COMPLETED_CYCLES;
-                        } else {
-                            cyclesListMessage = "Ваши завершенные циклы:\n" +
-                                    cycles.stream()
-                                            .map(cycle -> String.format("• Цикл с %s по %s (%d дней)",
-                                                    cycle.getStartDate(),
-                                                    cycle.getEndDate(),
-                                                    cycle.getCycleLength()))
-                                            .collect(Collectors.joining("\n"));
-                        }
-
-                        // Отправляем сообщение с циклом и клавиатурой
-                        sendMessageWithKeyboard(chatId, cyclesListMessage, createMenuKeyboard());
-                        break;
-                    case COMMAND_CURRENT_CYCLE_DAY:
-                        handleCurrentDay(chatId);
-                        break;
-                    case ENTER_ANOTHER_CYCLE:
-                        handleHistoricalCycleData(chatId);
-                        break;
-                    case DELETE_CYCLE:
-                        promptCycleDeletion(chatId);
-                        break;
-                    case "d":
-                        deleteAllData(chatId);
-                        break;
-                    case BACK:
-                        sendMessageWithKeyboard(chatId, SELECT_COMMAND, createMenuKeyboard());
-                        break;
-                    case CONFIRM_DELETE_CYCLE:
-                        Optional<Cycle> activeCycle = cycleService.findActiveOrDelayedCycleByChatId(chatId);
-                        if (activeCycle.isPresent()) {
-                            cycleService.deleteCycleById(activeCycle.get().getCycleId());
-                            userStates.put(chatId, new NoneState());
-                            partialCycleData.remove(chatId);
-                            sendMessageWithKeyboard(chatId, CYCLE_DELETED, createMenuKeyboard());
-                        } else {
-                            sendMessage(chatId, NO_ACTIVE_CYCLE);
-                        }
-                        break;
-                    default:
-                        sendMessageWithKeyboard(chatId, UNKNOWN_COMMAND, createMenuKeyboard());
-                        break;
-                }
+                Runnable commandHandler = commandHandlers.getOrDefault(messageText, () -> sendMessageWithKeyboard(chatId, UNKNOWN_COMMAND, createMenuKeyboard()));
+                commandHandler.run();
                 return;
             }
+
             UserStateHandler currentState = userStates.get(chatId);
 
             if (currentState instanceof AwaitingHistoricalCycleDataState) {
-
-                Cycle historicalCycle = partialCycleData.getOrDefault(chatId, new Cycle());
-
-                currentState.handleState(this, update, historicalCycle);
-
-                if (historicalCycle.getStartDate() != null && historicalCycle.getCycleLength() != 0 && historicalCycle.getPeriodLength() != 0) {
-                    historicalCycle.setStatus(CycleStatus.COMPLETED);
-                    cycleService.saveHistoricalCycle(historicalCycle);
-                    partialCycleData.remove(chatId);
-                }
-
-                partialCycleData.put(chatId, historicalCycle);
+                handleHistoricalCycleState(chatId, update);
                 return;
             }
 
             if (currentState != null && !(currentState instanceof NoneState)) {
-                Cycle cycle = partialCycleData.getOrDefault(chatId, new Cycle());
-                currentState.handleState(this, update, cycle);
-
-                if (cycle.getStartDate() != null && cycle.getCycleLength() != 0 && cycle.getPeriodLength() != 0) {
-                    User user = userService.findById(chatId).orElseThrow(() -> new IllegalArgumentException("User not found"));
-                    cycle.setUser(user);
-                    cycleCalculator.calculateCycleFields(cycle);
-                    cycle.setStatus(CycleStatus.ACTIVE);
-                    cycleService.save(cycle);
-                    partialCycleData.remove(chatId);
-                    sendMessageWithKeyboard(chatId, CYCLE_SAVED_SUCCESSFULLY, createMenuKeyboard());
-                }
-
-                partialCycleData.put(chatId, cycle);
+                handleActiveCycleState(chatId, update);
                 return;
-            }else {
+            } else {
                 sendMessageWithKeyboard(chatId, UNKNOWN_COMMAND, createMenuKeyboard());
-
-
             }
         } catch (Exception e) {
             sendMessageWithKeyboard(chatId, "", createMenuKeyboard());
         }
+    }
+
+    private void handleCompletedCycles(long chatId) {
+        List<Cycle> cycles = userService.findUserCyclesByChatId(chatId);
+        String cyclesListMessage = cycles.isEmpty() ? NO_COMPLETED_CYCLES : "Ваши завершенные циклы:\n" +
+                cycles.stream()
+                        .map(cycle -> String.format("• Цикл с %s по %s (%d дней)",
+                                cycle.getStartDate(),
+                                cycle.getEndDate(),
+                                cycle.getCycleLength()))
+                        .collect(Collectors.joining("\n"));
+        sendMessageWithKeyboard(chatId, cyclesListMessage, createMenuKeyboard());
+    }
+
+    private void handleDeleteCycle(long chatId) {
+        Optional<Cycle> activeCycle = cycleService.findActiveOrDelayedCycleByChatId(chatId);
+        if (activeCycle.isPresent()) {
+            cycleService.deleteCycleById(activeCycle.get().getCycleId());
+            userStates.put(chatId, new NoneState());
+            partialCycleData.remove(chatId);
+            sendMessageWithKeyboard(chatId, CYCLE_DELETED, createMenuKeyboard());
+        } else {
+            sendMessage(chatId, NO_ACTIVE_CYCLE);
+        }
+    }
+
+    private void handleHistoricalCycleState(long chatId, Update update) {
+        Cycle historicalCycle = partialCycleData.getOrDefault(chatId, new Cycle());
+        userStates.get(chatId).handleState(this, update, historicalCycle);
+
+        if (historicalCycle.getStartDate() != null && historicalCycle.getCycleLength() != 0 && historicalCycle.getPeriodLength() != 0) {
+            historicalCycle.setStatus(CycleStatus.COMPLETED);
+            cycleService.saveHistoricalCycle(historicalCycle);
+            partialCycleData.remove(chatId);
+        }
+
+        partialCycleData.put(chatId, historicalCycle);
+    }
+
+    private void handleActiveCycleState(long chatId, Update update) {
+        Cycle cycle = partialCycleData.getOrDefault(chatId, new Cycle());
+        userStates.get(chatId).handleState(this, update, cycle);
+
+        if (cycle.getStartDate() != null && cycle.getCycleLength() != 0 && cycle.getPeriodLength() != 0) {
+            User user = userService.findById(chatId).orElseThrow(() -> new IllegalArgumentException("User not found"));
+            cycle.setUser(user);
+            cycleCalculator.calculateCycleFields(cycle);
+            cycle.setStatus(CycleStatus.ACTIVE);
+            cycleService.save(cycle);
+            partialCycleData.remove(chatId);
+            sendMessageWithKeyboard(chatId, CYCLE_SAVED_SUCCESSFULLY, createMenuKeyboard());
+        }
+
+        partialCycleData.put(chatId, cycle);
     }
 
 
