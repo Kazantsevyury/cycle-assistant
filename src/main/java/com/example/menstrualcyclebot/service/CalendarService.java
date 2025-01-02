@@ -265,7 +265,11 @@ public class CalendarService {
 
     private String getPhaseEmojiForDate(Cycle cycle, LocalDate date) {
         log.debug("Determining phase emoji for date: {} and cycle: {}", date, cycle);
-
+        // Приоритет для первого дня цикла
+        if (date.isEqual(cycle.getStartDate())  ) {
+            log.debug("Date {} matches start date of the cycle: {}", date, cycle.getStartDate());
+            return BotTextConstants.MENSTRUATION_EMOJI;
+        }
         if (cycle.getOvulationDate() != null && date.isEqual(cycle.getOvulationDate())) {
             log.debug("Date {} matches ovulation date: {}", date, cycle.getOvulationDate());
             return BotTextConstants.OVULATION_EMOJI;
@@ -280,12 +284,15 @@ public class CalendarService {
             }
         }
 
-        if (!date.isAfter(cycle.getStartDate().plusDays(cycle.getPeriodLength() - 1))) {
+
+
+        if (!date.isBefore(cycle.getStartDate()) && !date.isAfter(cycle.getStartDate().plusDays(cycle.getPeriodLength() - 1))) {
             log.debug("Date {} is within menstruation period: [{} - {}]",
                     date, cycle.getStartDate(),
                     cycle.getStartDate().plusDays(cycle.getPeriodLength() - 1));
             return BotTextConstants.MENSTRUATION_EMOJI;
         }
+
 
         if (cycle.getFollicularPhaseStart() != null && cycle.getOvulationDate() != null &&
                 !date.isBefore(cycle.getFollicularPhaseStart()) && date.isBefore(cycle.getOvulationDate())) {

@@ -66,6 +66,8 @@ public class CycleCalculator {
     }
 
     public static void recalculateCycleFieldsBasedOnEndDate(Cycle cycle) {
+        int D = cycle.getCycleLength();
+
         // Получаем начальную и конечную дату цикла из объекта cycle
         LocalDate startDate = cycle.getStartDate();
         LocalDate endDate = cycle.getEndDate();
@@ -91,6 +93,10 @@ public class CycleCalculator {
         } else {
             // Если длительность менструации в порядке, пересчитываем поля цикла
             calculateCycleFields(cycle);
+            // Коррекция, если месячные начались равньше срока.
+            LocalDate lutealPhaseEnd = startDate.plusDays(D - 2);
+            cycle.setLutealPhaseEnd(lutealPhaseEnd);
+
         }
 
         // Обновление isExtended в зависимости от delayDays
