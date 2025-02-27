@@ -406,7 +406,6 @@ public class Bot extends TelegramLongPollingBot {
     /**
      * Обрабатывает запрос пользователя на получение календаря.
      *
-     * @param chatId Идентификатор чата, в котором нужно отправить календарь.
      */
     public void handleCalendar(long chatId, Update update) {
         try {
@@ -513,7 +512,8 @@ public class Bot extends TelegramLongPollingBot {
                 || BACK_TO_NOTIFICATION_SETTING.equals(firstPart)
                 || SETTING_UP_GENERAL_RECOMMENDATIONS.equals(callbackData)
                 || BACK_TO_USER_SETTINGS_MENU.equals(callbackData)
-                || "back_to_main_menu".equals(firstPart)) {
+                || "back_to_main_menu".equals(firstPart)
+                || "edit_timing_general".equals(callbackData)) { //{
             return CallbackType.USER_SETTINGS;
         }
 
@@ -540,6 +540,17 @@ public class Bot extends TelegramLongPollingBot {
         String callbackData = callbackQuery.getData();
         long chatId = callbackQuery.getMessage().getChatId();
         Integer messageId = callbackQuery.getMessage().getMessageId();
+
+        if ("edit_timing_general".equals(callbackData)) {
+            log.info("Entering general timing edit mode for chatId: {}, messageId: {}", chatId, messageId);
+
+            // ✅ Передаем messageId в AwaitingGeneralTimingState
+            changeUserState(chatId, new AwaitingGeneralTimingState(chatId, messageId));
+
+            sendMessage(chatId, "Введите время отправки уведомлений в формате HH:mm (например, 08:30):");
+            return;
+        }
+
 
         if (SETTING_UP_FERTILE_WINDOW_RECOMMENDATIONS.equals(callbackData)) {
             log.info("Handling SETTING_UP_FERTILE_WINDOW_RECOMMENDATIONS for chatId: {}", chatId);
@@ -662,6 +673,12 @@ public class Bot extends TelegramLongPollingBot {
             log.info("Navigating back to user settings menu for chatId: {}", chatId);
             handleProfileSettings(chatId);
         }
+        else if ("edit_timing_general".equals(callbackData)) {
+            log.info("Entering general timing edit mode for chatId: {}", chatId);
+            changeUserState(chatId, new AwaitingGeneralTimingState(chatId, messageId));
+            sendMessage(chatId, "Введите время отправки уведомлений в формате HH:mm (например, 08:30):");
+        }
+
         else if ("back_to_main_menu".equals(callbackData.split(":")[0])) {
             log.info("Navigating back to main menu for chatId: {}", chatId);
             sendMessageWithKeyboard(chatId, MAIN_MENU, createMenuKeyboard());
@@ -800,7 +817,6 @@ public class Bot extends TelegramLongPollingBot {
                 || callbackData.equals("CARE")
                 || callbackData.equals("EMOTIONAL_WELLBEING")
                 || callbackData.equals("SEX")
-                || callbackData.equals("edit_timing_general")
                 || callbackData.equals("edit_timing_fertility")
                 || callbackData.equals("toggle_fertility")
                 || callbackData.equals("edit_days_before_fertility")

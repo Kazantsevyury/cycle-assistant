@@ -43,6 +43,12 @@ public class UserService {
 
         userRepository.save(user);
     }
+    public void updateGeneralRecommendationTiming(long chatId, String time) {
+        User user = userRepository.findById(chatId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        user.setTimingOfGeneralRecommendations(time);
+        userRepository.save(user);
+    }
 
     // Метод для получения настроек уведомлений пользователя
     @Transactional(readOnly = true)
