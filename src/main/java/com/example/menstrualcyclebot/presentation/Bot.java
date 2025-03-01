@@ -550,6 +550,14 @@ public class Bot extends TelegramLongPollingBot {
             sendMessage(chatId, "Введите время отправки уведомлений в формате HH:mm (например, 08:30):");
             return;
         }
+        if ("edit_timing_fertility".equals(callbackData)) {
+            log.info("Entering general timing edit mode for chatId: {}, messageId: {}", chatId, messageId);
+
+            changeUserState(chatId, new AwaitingFertilityTimingState(chatId, messageId));
+
+            sendMessage(chatId, "Введите время отправки уведомлений в формате HH:mm (например, 08:30):");
+            return;
+        }
 
 
         if (SETTING_UP_FERTILE_WINDOW_RECOMMENDATIONS.equals(callbackData)) {
@@ -678,6 +686,12 @@ public class Bot extends TelegramLongPollingBot {
             changeUserState(chatId, new AwaitingGeneralTimingState(chatId, messageId));
             sendMessage(chatId, "Введите время отправки уведомлений в формате HH:mm (например, 08:30):");
         }
+        else if ("edit_timing_fertility".equals(callbackData)) {
+            log.info("Entering general timing edit mode for chatId: {}", chatId);
+            changeUserState(chatId, new AwaitingFertilityTimingState(chatId, messageId));
+            sendMessage(chatId, "Введите время отправки уведомлений в формате HH:mm (например, 08:30):");
+        }
+
 
         else if ("back_to_main_menu".equals(callbackData.split(":")[0])) {
             log.info("Navigating back to main menu for chatId: {}", chatId);
@@ -817,7 +831,6 @@ public class Bot extends TelegramLongPollingBot {
                 || callbackData.equals("CARE")
                 || callbackData.equals("EMOTIONAL_WELLBEING")
                 || callbackData.equals("SEX")
-                || callbackData.equals("edit_timing_fertility")
                 || callbackData.equals("toggle_fertility")
                 || callbackData.equals("edit_days_before_fertility")
                 || callbackData.equals(SETTING_UP_CYCLE_DELAY_RECOMMENDATIONS)
