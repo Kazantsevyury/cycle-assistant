@@ -541,6 +541,14 @@ public class Bot extends TelegramLongPollingBot {
         long chatId = callbackQuery.getMessage().getChatId();
         Integer messageId = callbackQuery.getMessage().getMessageId();
 
+        if ("edit_timing_menstruation".equals(callbackData)) {
+            log.info("Entering general timing edit mode for chatId: {}, messageId: {}", chatId, messageId);
+
+            changeUserState(chatId, new AwaitingMenstruationTimingState(chatId, messageId));
+
+            sendMessage(chatId, "Введите время отправки уведомлений в формате HH:mm (например, 08:30):");
+            return;
+        }
         if ("edit_timing_general".equals(callbackData)) {
             log.info("Entering general timing edit mode for chatId: {}, messageId: {}", chatId, messageId);
 
@@ -684,6 +692,11 @@ public class Bot extends TelegramLongPollingBot {
         else if ("edit_timing_general".equals(callbackData)) {
             log.info("Entering general timing edit mode for chatId: {}", chatId);
             changeUserState(chatId, new AwaitingGeneralTimingState(chatId, messageId));
+            sendMessage(chatId, "Введите время отправки уведомлений в формате HH:mm (например, 08:30):");
+        }
+        else if ("edit_timing_menstruation".equals(callbackData)) {
+            log.info("Entering general timing edit mode for chatId: {}", chatId);
+            changeUserState(chatId, new AwaitingMenstruationTimingState(chatId, messageId));
             sendMessage(chatId, "Введите время отправки уведомлений в формате HH:mm (например, 08:30):");
         }
         else if ("edit_timing_fertility".equals(callbackData)) {
@@ -836,7 +849,10 @@ public class Bot extends TelegramLongPollingBot {
                 || callbackData.equals(SETTING_UP_CYCLE_DELAY_RECOMMENDATIONS)
                 || callbackData.equals("toggle_fertility")
                 || callbackData.equals("edit_timing_fertility")
+                || callbackData.equals("edit_timing_menstruation")
+
                 || callbackData.equals("edit_days_before_fertility");
+
 
     }
 }

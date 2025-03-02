@@ -55,7 +55,12 @@ public class UserService {
         user.setTimingOfFertilityWindowNotifications(time);
         userRepository.save(user);
     }
-
+    public void updateMenstruationTiming(long chatId, String time) {
+        User user = userRepository.findById(chatId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        user.setTimingOfMenstruationStartNotifications(time);
+        userRepository.save(user);
+    }
 
     // Метод для получения настроек уведомлений пользователя
     @Transactional(readOnly = true)
@@ -112,5 +117,6 @@ public class UserService {
     public List<User> findAllUsersWithGeneralRecommendations() {
         return userRepository.findAllByTimingOfGeneralRecommendationsIsNotNull();
     }
+
 
 }
